@@ -213,7 +213,7 @@ function SettingsModal({ isOpen, onClose }) {
                             <div className="text-center">
                                 <div className="flex justify-center mb-4">
                                     <img
-                                        src="/public/icon.png"
+                                        src="/icon.png"
                                         alt="Quizlab Reader"
                                         className="w-20 h-20 rounded-2xl shadow-lg"
                                     />
