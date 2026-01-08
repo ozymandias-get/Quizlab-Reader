@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '../context/LanguageContext'
+import appIcon from '../assets/icon.png'
 
 function SettingsModal({ isOpen, onClose }) {
     const { t, language, setLanguage, languages } = useLanguage()
@@ -213,7 +214,7 @@ function SettingsModal({ isOpen, onClose }) {
                             <div className="text-center">
                                 <div className="flex justify-center mb-4">
                                     <img
-                                        src="/icon.png"
+                                        src={appIcon}
                                         alt="Quizlab Reader"
                                         className="w-20 h-20 rounded-2xl shadow-lg"
                                     />
