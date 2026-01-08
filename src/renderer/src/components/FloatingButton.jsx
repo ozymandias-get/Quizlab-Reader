@@ -1,6 +1,9 @@
 import React from 'react'
+import { useLanguage } from '../context/LanguageContext'
 
 function FloatingButton({ onClick, position }) {
+    const { t } = useLanguage()
+
     // Position prop: { top, left } - seçili metnin üzerinde konumlandırmak için
     const style = position ? {
         position: 'fixed',
@@ -32,10 +35,9 @@ function FloatingButton({ onClick, position }) {
                 <path d="M22 2L11 13" />
                 <path d="M22 2l-7 20-4-9-9-4 20-7z" />
             </svg>
-            <span>AI'ya Gönder</span>
+            <span>{t('send_to_ai')}</span>
         </div>
     )
 }
 
 export default FloatingButton
-

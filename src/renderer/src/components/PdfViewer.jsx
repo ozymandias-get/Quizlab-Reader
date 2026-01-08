@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLanguage } from '../context/LanguageContext'
 
 // @react-pdf-viewer imports
 import { Worker, Viewer, SpecialZoomLevel, ScrollMode } from '@react-pdf-viewer/core'
@@ -17,6 +18,7 @@ import '@react-pdf-viewer/zoom/lib/styles/index.css'
 import '@react-pdf-viewer/search/lib/styles/index.css'
 
 function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSend, onAutoSendToggle }) {
+    const { t } = useLanguage()
     const [pdfUrl, setPdfUrl] = useState(null)
     const [currentPage, setCurrentPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)
@@ -174,8 +176,8 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSe
                 </div>
 
                 <div className="space-y-3">
-                    <h2 className="font-display text-2xl font-semibold text-stone-200">PDF Yükle</h2>
-                    <p className="text-stone-500 text-sm max-w-[200px]">Okumak istediğiniz PDF dosyasını seçin</p>
+                    <h2 className="font-display text-2xl font-semibold text-stone-200">{t('no_pdf_loaded')}</h2>
+                    <p className="text-stone-500 text-sm max-w-[200px]">{t('drop_pdf_here')}</p>
                 </div>
 
                 <button
@@ -190,7 +192,7 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSe
                             strokeLinejoin="round" />
                         <path d="M12 3V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    <span>PDF Seç</span>
+                    <span>{t('select_pdf')}</span>
                 </button>
             </div>
         )
@@ -222,7 +224,7 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSe
                 <button
                     className="btn-icon"
                     onClick={onSelectPdf}
-                    title="Başka PDF Aç"
+                    title={t('select_pdf')}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 15V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V15" />
@@ -235,7 +237,7 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSe
                 <button
                     className="btn-icon text-amber-500"
                     onClick={onScreenshot}
-                    title="Ekran Görüntüsü Al"
+                    title={t('screenshot')}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -247,7 +249,7 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSe
                 <button
                     className={`btn-icon ${autoSend ? 'text-green-400' : ''}`}
                     onClick={onAutoSendToggle}
-                    title={autoSend ? 'Otomatik Gönder: Açık' : 'Otomatik Gönder: Kapalı'}
+                    title={autoSend ? t('auto_send_on') : t('auto_send_off')}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M22 2L11 13" />

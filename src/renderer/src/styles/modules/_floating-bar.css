@@ -324,3 +324,30 @@
   );
   margin: 0 6px;
 }
+
+/* Ayarlar butonu */
+.floating-btn--settings {
+  padding: 0 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.floating-btn--settings:hover {
+  color: #ffffff;
+}
+
+.floating-btn--settings:hover .settings-icon {
+  animation: settingsRotate 2s linear infinite;
+}
+
+@keyframes settingsRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.settings-icon {
+  transition: transform 0.3s ease;
+}
