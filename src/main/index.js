@@ -1,14 +1,116 @@
 /**
  * QuizLab Reader - Electron Main Process
+ * 
+ * Bellek Optimizasyonu:
+ * - PDF dosyaları Base64 yerine streaming protocol ile yüklenir
+ * - Bu sayede 100MB PDF için 300-400MB yerine ~100MB RAM kullanılır
+ * - UI thread bloklanmaz, dosya asenkron stream edilir
  */
-const { app, BrowserWindow, ipcMain, dialog, session } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, session, protocol, net, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
-const { initUpdater, setupUpdaterIPC } = require('./updater')
+const { initUpdater } = require('./updater')
 
 // Production: app.isPackaged true olduğunda
 // Development: app.isPackaged false olduğunda (electron . ile çalıştırıldığında)
 const isDev = !app.isPackaged
+
+// Güvenli PDF yollarını saklamak için Map
+// Key: benzersiz ID, Value: dosya yolu
+const authorizedPdfPaths = new Map()
+
+// Custom protokolü privileged olarak kaydet (app.whenReady() öncesi yapılmalı)
+// Bu, protokolün fetch API, blob URL gibi web özelliklerini kullanabilmesi için gerekli
+protocol.registerSchemesAsPrivileged([
+    {
+        scheme: 'local-pdf',
+        privileges: {
+            standard: true,
+            secure: true,
+            supportFetchAPI: true,
+            stream: true,
+            bypassCSP: true
+        }
+    }
+])
+
+/**
+ * Özel 'local-pdf' protokolünü kaydet
+ * Bu protokol PDF dosyalarını streaming ile sunar
+ * Güvenlik: Sadece select-pdf ile seçilen dosyalara erişim izni verilir
+ */
+function registerPdfProtocol() {
+    protocol.handle('local-pdf', async (request) => {
+        try {
+            // URL format: local-pdf://ID
+            // Standard scheme olduğu için host = ID olur
+            const url = new URL(request.url)
+            // Host'tan ID'yi al (local-pdf://pdf_123 -> host = pdf_123)
+            const pdfId = url.host
+
+            console.log('[PDF Protocol] Request URL:', request.url)
+            console.log('[PDF Protocol] Parsed ID from host:', pdfId)
+            console.log('[PDF Protocol] Authorized paths:', Array.from(authorizedPdfPaths.keys()))
+
+            // Yetkilendirilmiş dosya yolunu bul
+            const filePath = authorizedPdfPaths.get(pdfId)
+
+            if (!filePath) {
+                console.error('[PDF Protocol] Erişim reddedildi - yetkisiz ID:', pdfId)
+                return new Response('Unauthorized', { status: 403 })
+            }
+
+            console.log('[PDF Protocol] Dosya yolu:', filePath)
+
+            // Dosya var mı kontrol et
+            if (!fs.existsSync(filePath)) {
+                console.error('[PDF Protocol] Dosya bulunamadı:', filePath)
+                return new Response('Not Found', { status: 404 })
+            }
+
+            // Dosya boyutunu al
+            const stats = await fs.promises.stat(filePath)
+            console.log('[PDF Protocol] Dosya boyutu:', stats.size, 'bytes')
+
+            // Dosyayı stream olarak oku - RAM'de tamamen tutmaz
+            const stream = fs.createReadStream(filePath)
+
+            // Node.js stream'i Web ReadableStream'e çevir
+            const webStream = new ReadableStream({
+                start(controller) {
+                    stream.on('data', (chunk) => {
+                        controller.enqueue(chunk)
+                    })
+                    stream.on('end', () => {
+                        controller.close()
+                    })
+                    stream.on('error', (err) => {
+                        console.error('[PDF Protocol] Stream hatası:', err)
+                        controller.error(err)
+                    })
+                },
+                cancel() {
+                    stream.destroy()
+                }
+            })
+
+            console.log('[PDF Protocol] Stream başlatıldı')
+
+            return new Response(webStream, {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/pdf',
+                    'Content-Length': String(stats.size),
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache'
+                }
+            })
+        } catch (error) {
+            console.error('[PDF Protocol] Hata:', error)
+            return new Response('Internal Error', { status: 500 })
+        }
+    })
+}
 
 function createWindow() {
     // Preload script yolu
@@ -78,7 +180,15 @@ function createWindow() {
     })
 }
 
+/**
+ * Benzersiz PDF ID'si oluştur
+ */
+function generatePdfId() {
+    return `pdf_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+}
+
 // IPC Handler: PDF dosyası seçme
+// Artık Base64 dönüşümü yok - sadece dosya meta bilgisi ve streaming URL döner
 ipcMain.handle('select-pdf', async () => {
     const result = await dialog.showOpenDialog({
         properties: ['openFile'],
@@ -94,21 +204,41 @@ ipcMain.handle('select-pdf', async () => {
     const filePath = result.filePaths[0]
 
     try {
-        const pdfBuffer = fs.readFileSync(filePath)
-        const base64Data = pdfBuffer.toString('base64')
+        // Dosyanın var olduğunu ve okunabilir olduğunu kontrol et
+        await fs.promises.access(filePath, fs.constants.R_OK)
+
+        // Dosya boyutunu al (UI'da göstermek için)
+        const stats = await fs.promises.stat(filePath)
+
+        // Benzersiz ID oluştur ve dosya yolunu yetkilendir
+        const pdfId = generatePdfId()
+        authorizedPdfPaths.set(pdfId, filePath)
+
+        // Eski yolları temizle (bellek sızıntısını önle)
+        // Son 10 PDF'i tut, eskilerini sil
+        if (authorizedPdfPaths.size > 10) {
+            const firstKey = authorizedPdfPaths.keys().next().value
+            authorizedPdfPaths.delete(firstKey)
+        }
+
         return {
             path: filePath,
             name: path.basename(filePath),
-            data: base64Data
+            size: stats.size,
+            // Streaming URL - Base64 yerine bu kullanılacak
+            // Format: local-pdf://ID (basit ve güvenilir)
+            streamUrl: `local-pdf://${pdfId}`
         }
     } catch (error) {
-        console.error('PDF okuma hatası:', error)
+        console.error('PDF erişim hatası:', error)
         return null
     }
 })
 
 // IPC Handler: Ekran görüntüsü yakalama
-ipcMain.handle('capture-screen', async (event, rect) => {
+// Not: Tüm pencereyi yakalar, kırpma işlemi renderer tarafında (Canvas) yapılır
+// Bu yaklaşım daha verimlidir çünkü main process'e gereksiz veri gönderilmez
+ipcMain.handle('capture-screen', async () => {
     try {
         const mainWindow = BrowserWindow.getAllWindows()[0]
         if (!mainWindow) return null
@@ -122,13 +252,32 @@ ipcMain.handle('capture-screen', async (event, rect) => {
     }
 })
 
+// IPC Handler: Harici linki sistem tarayıcısında aç
+// Webview'da tıklanan harici linkleri işlemek için kullanılır
+ipcMain.handle('open-external', async (event, url) => {
+    try {
+        // URL güvenlik kontrolü
+        const parsedUrl = new URL(url)
+        if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+            await shell.openExternal(url)
+            return true
+        }
+        return false
+    } catch (error) {
+        console.error('Harici bağlantı açma hatası:', error)
+        return false
+    }
+})
+
 app.whenReady().then(() => {
+    // PDF streaming protokolünü kaydet - pencere oluşturmadan önce
+    registerPdfProtocol()
+
     createWindow()
 
-    // Updater IPC'lerini kur (dev modunda da çalışsın, sadece güncelleme kontrolü yapmaz)
-    setupUpdaterIPC()
-
-    // Auto updater'ı başlat (sadece production'da)
+    // Auto updater'ı başlat
+    // initUpdater hem IPC kurulumunu hem de otomatik kontrol başlatmayı yapar
+    // Development modunda sadece IPC kurulur, güncelleme kontrolü yapılmaz
     initUpdater()
 
     app.on('activate', () => {
@@ -146,4 +295,29 @@ app.on('window-all-closed', () => {
 
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error)
+
+    // Kritik hatalarda kullanıcıya dialog göster
+    // App henüz hazır değilse dialog gösterilemez, sadece loglama yapılır
+    if (app.isReady()) {
+        dialog.showErrorBox(
+            'Beklenmeyen Hata',
+            `Uygulama beklenmeyen bir hata ile karşılaştı.\n\n` +
+            `Hata: ${error.message}\n\n` +
+            `Detay: ${error.stack || 'Detay yok'}\n\n` +
+            `Uygulama çalışmaya devam edebilir ancak bazı özellikler etkilenmiş olabilir.`
+        )
+    }
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+
+    // Promise rejection'ları da kullanıcıya bildir
+    if (app.isReady()) {
+        dialog.showErrorBox(
+            'İşlenmeyen Promise Hatası',
+            `Bir async işlem başarısız oldu.\n\n` +
+            `Sebep: ${reason instanceof Error ? reason.message : String(reason)}`
+        )
+    }
 })

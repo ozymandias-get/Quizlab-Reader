@@ -16,16 +16,13 @@ export function useAISender(webviewRef, autoSend) {
   const sendTextToAI = useCallback(async (text) => {
     if (!text || !webviewRef?.current) return false
 
-    const escapedText = text
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$')
-      .replace(/\n/g, '\\n')
-      .replace(/\r/g, '\\r')
+    // JSON.stringify kullanarak güvenli kaçış - kod blokları, backtick'ler ve 
+    // diğer özel karakterler otomatik olarak doğru şekilde escape edilir
+    const safeText = JSON.stringify(text)
 
     const script = `
       (function() {
-        const text = \`${escapedText}\`;
+        const text = ${safeText};
         
         // AI platformlarına göre sıralanmış selector listesi
         const selectors = [

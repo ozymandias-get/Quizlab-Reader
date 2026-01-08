@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import PdfViewer from './components/PdfViewer'
 import AiWebview from './components/AiWebview'
 import BottomBar from './components/BottomBar'
@@ -47,8 +47,8 @@ function App() {
         handleCapture
     } = useScreenshot(sendImageToAI)
 
-    // Handlers
-    const handleSelectPdf = async () => {
+    // Handlers - useCallback ile memoize edildi (child component'lerde gereksiz re-render önlenir)
+    const handleSelectPdf = useCallback(async () => {
         if (!window.electronAPI?.selectPdf) return
         try {
             const result = await window.electronAPI.selectPdf()
@@ -56,21 +56,23 @@ function App() {
         } catch (error) {
             console.error('PDF seçme hatası:', error)
         }
-    }
+    }, [])
 
-    const handleTextSelection = (text, position) => {
+    // handleTextSelection - PdfViewer'daki useEffect dependency olarak kullanılıyor
+    // useCallback ile sararak event listener'ların gereksiz sökülüp takılmasını önle
+    const handleTextSelection = useCallback((text, position) => {
         setSelectedText(text)
         setSelectionPosition(position)
-    }
+    }, [])
 
-    const handleSendToAI = async () => {
+    const handleSendToAI = useCallback(async () => {
         if (!selectedText) return
         const success = await sendTextToAI(selectedText)
         if (success) {
             setSelectedText('')
             setSelectionPosition(null)
         }
-    }
+    }, [selectedText, sendTextToAI])
 
     return (
         <div className="h-screen w-screen overflow-hidden relative">

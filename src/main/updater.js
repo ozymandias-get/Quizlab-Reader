@@ -1,6 +1,11 @@
 /**
  * Auto Updater Module
  * GitHub Releases üzerinden otomatik güncelleme sistemi
+ * 
+ * Düzeltmeler:
+ * - Duplicate IPC handler koruması
+ * - Race condition önleme (isChecking flag)
+ * - Debounce mekanizması
  */
 const { autoUpdater } = require('electron-updater')
 const { app, ipcMain, BrowserWindow } = require('electron')
@@ -14,22 +19,68 @@ let updateAvailable = false
 let updateInfo = null
 let downloadProgress = 0
 
+// Race condition önleme
+let isChecking = false
+let lastCheckTime = 0
+const CHECK_DEBOUNCE_MS = 5000 // 5 saniye içinde tekrar kontrol engelle
+
+// Duplicate handler koruması
+let ipcHandlersSetup = false
+let eventsSetup = false
+
 /**
  * IPC Handlers kurulumu
+ * Duplicate handler eklemeyi önler
  */
 function setupUpdaterIPC() {
-    // Güncelleme kontrolü
+    // Zaten kurulduysa tekrar ekleme
+    if (ipcHandlersSetup) {
+        console.log('[Updater] IPC handlers already setup, skipping...')
+        return
+    }
+    ipcHandlersSetup = true
+
+    // Güncelleme kontrolü (debounce ve race condition korumalı)
     ipcMain.handle('check-for-updates', async () => {
+        // Race condition kontrolü
+        if (isChecking) {
+            console.log('[Updater] Check already in progress, returning cached state')
+            return {
+                available: updateAvailable,
+                version: updateInfo?.version || null,
+                releaseNotes: updateInfo?.releaseNotes || null,
+                cached: true
+            }
+        }
+
+        // Debounce kontrolü
+        const now = Date.now()
+        if (now - lastCheckTime < CHECK_DEBOUNCE_MS) {
+            console.log('[Updater] Check debounced, returning cached state')
+            return {
+                available: updateAvailable,
+                version: updateInfo?.version || null,
+                releaseNotes: updateInfo?.releaseNotes || null,
+                cached: true
+            }
+        }
+
         try {
+            isChecking = true
+            lastCheckTime = now
+
             const result = await autoUpdater.checkForUpdates()
+
             return {
                 available: updateAvailable,
                 version: updateInfo?.version || null,
                 releaseNotes: updateInfo?.releaseNotes || null
             }
         } catch (error) {
-            console.error('Güncelleme kontrolü hatası:', error)
+            console.error('[Updater] Güncelleme kontrolü hatası:', error)
             return { available: false, error: error.message }
+        } finally {
+            isChecking = false
         }
     })
 
@@ -39,7 +90,7 @@ function setupUpdaterIPC() {
             await autoUpdater.downloadUpdate()
             return { success: true }
         } catch (error) {
-            console.error('Güncelleme indirme hatası:', error)
+            console.error('[Updater] Güncelleme indirme hatası:', error)
             return { success: false, error: error.message }
         }
     })
@@ -53,16 +104,27 @@ function setupUpdaterIPC() {
     ipcMain.handle('get-app-version', () => {
         return app.getVersion()
     })
+
+    console.log('[Updater] IPC handlers setup complete')
 }
 
 /**
  * Updater olaylarını dinle
+ * Duplicate event listener eklemeyi önler
  */
 function setupUpdaterEvents() {
+    // Zaten kurulduysa tekrar ekleme
+    if (eventsSetup) {
+        console.log('[Updater] Event listeners already setup, skipping...')
+        return
+    }
+    eventsSetup = true
+
     // Güncelleme mevcut
     autoUpdater.on('update-available', (info) => {
         updateAvailable = true
         updateInfo = info
+        isChecking = false // Kontrol tamamlandı
         sendToRenderer('update-available', {
             version: info.version,
             releaseNotes: info.releaseNotes
@@ -73,6 +135,7 @@ function setupUpdaterEvents() {
     autoUpdater.on('update-not-available', (info) => {
         updateAvailable = false
         updateInfo = null
+        isChecking = false // Kontrol tamamlandı
         sendToRenderer('update-not-available', { version: info.version })
     })
 
@@ -96,9 +159,12 @@ function setupUpdaterEvents() {
 
     // Hata
     autoUpdater.on('error', (error) => {
-        console.error('Auto updater hatası:', error)
+        console.error('[Updater] Auto updater hatası:', error)
+        isChecking = false // Hata durumunda da kilidi aç
         sendToRenderer('update-error', { message: error.message })
     })
+
+    console.log('[Updater] Event listeners setup complete')
 }
 
 /**
@@ -115,24 +181,39 @@ function sendToRenderer(channel, data) {
 
 /**
  * Güncelleme modülünü başlat
+ * Production'da otomatik kontrol yapar, development'ta sadece IPC kurar
  */
 function initUpdater() {
+    // IPC handler'ları her zaman kur (dev modunda da UI çalışabilsin)
+    setupUpdaterIPC()
+
     // Development modunda güncelleme kontrolü yapma
     if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
-        console.log('Development mode - auto updater disabled')
+        console.log('[Updater] Development mode - auto check disabled, IPC ready')
         return
     }
 
-    setupUpdaterIPC()
+    // Event listener'ları kur (sadece production)
     setupUpdaterEvents()
 
     // Uygulama başladıktan 3 saniye sonra güncelleme kontrolü
+    // isChecking flag sayesinde manuel kontrol ile çakışmaz
     setTimeout(() => {
-        autoUpdater.checkForUpdates().catch(console.error)
+        if (!isChecking) {
+            console.log('[Updater] Auto check starting...')
+            isChecking = true
+            lastCheckTime = Date.now()
+            autoUpdater.checkForUpdates().catch((error) => {
+                console.error('[Updater] Auto check error:', error)
+                isChecking = false
+            })
+        } else {
+            console.log('[Updater] Auto check skipped - manual check in progress')
+        }
     }, 3000)
 }
 
 module.exports = {
     initUpdater,
-    setupUpdaterIPC
+    setupUpdaterIPC  // Geriye dönük uyumluluk için export ediliyor ama initUpdater kullanılmalı
 }

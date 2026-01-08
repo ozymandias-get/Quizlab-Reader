@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Ekran görüntüsü alma
     captureScreen: () => ipcRenderer.invoke('capture-screen'),
 
+    // Harici linki sistem tarayıcısında aç
+    openExternal: (url) => ipcRenderer.invoke('open-external', url),
+
     // Platform bilgisi
     platform: process.platform,
 

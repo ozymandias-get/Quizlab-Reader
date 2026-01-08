@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { translations, LANGUAGES, DEFAULT_LANGUAGE, VALID_LANGUAGES } from '../constants/translations'
 
 const LanguageContext = createContext(null)
@@ -34,13 +34,14 @@ export function LanguageProvider({ children }) {
         return translations[language]?.[key] || translations[DEFAULT_LANGUAGE]?.[key] || key
     }, [language])
 
-    const value = {
+    // Context value'yu memoize ederek gereksiz re-render'ları önle
+    const value = useMemo(() => ({
         language,
         setLanguage,
         t,
         languages: LANGUAGES,
         currentLanguage: LANGUAGES[language]
-    }
+    }), [language, setLanguage, t])
 
     return (
         <LanguageContext.Provider value={value}>
