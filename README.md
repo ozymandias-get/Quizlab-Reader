@@ -1,11 +1,16 @@
 <p align="center">
+  <img src="resources/icon.png" alt="Quizlab Reader Logo" width="180" height="180">
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Electron-28.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/Vite-5.0.10-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
 </p>
 
-<h1 align="center">📚 Quizlab Reader</h1>
+<h1 align="center">Quizlab Reader</h1>
+
 
 <p align="center">
   <strong>A modern, split-screen Electron application that combines PDF reading with AI assistance</strong>
