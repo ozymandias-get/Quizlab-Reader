@@ -20,8 +20,10 @@
   "build": {
     "appId": "com.quizlab.reader",
     "productName": "Quizlab Reader",
+    "copyright": "Copyright © 2026 Quizlab Reader",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "resources"
     },
     "files": [
       "dist/**/*",
@@ -29,22 +31,68 @@
       "src/preload/**/*",
       "resources/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "resources/",
+        "to": "resources/",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "win": {
-      "target": "nsis",
-      "icon": "resources/icon.png"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.png",
+      "publisherName": "Quizlab Reader"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "resources/icon.png",
+      "uninstallerIcon": "resources/icon.png",
+      "installerHeaderIcon": "resources/icon.png",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Quizlab Reader",
+      "include": "installer/installer.nsh",
+      "installerLanguages": [
+        "en_US",
+        "tr_TR",
+        "zh_CN",
+        "es_ES",
+        "ar"
+      ],
+      "language": "1033",
+      "warningsAsErrors": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
     },
     "mac": {
       "target": "dmg",
-      "icon": "resources/icon.png"
+      "icon": "resources/icon.png",
+      "category": "public.app-category.productivity"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "resources/icon.png"
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "resources/icon.png",
+      "category": "Office"
     },
     "publish": {
       "provider": "github",
       "owner": "ozymandias-get",
-      "repo": "Quizlab-Reader"
+      "repo": "Quizlab-Reader",
+      "releaseType": "release"
     }
   },
   "keywords": [
