@@ -6,7 +6,9 @@ const path = require('path')
 const fs = require('fs')
 const { initUpdater, setupUpdaterIPC } = require('./updater')
 
-const isDev = process.env.NODE_ENV !== 'production' || !app.isPackaged
+// Production: app.isPackaged true olduğunda
+// Development: app.isPackaged false olduğunda (electron . ile çalıştırıldığında)
+const isDev = !app.isPackaged
 
 function createWindow() {
     // Preload script yolu
@@ -45,10 +47,24 @@ function createWindow() {
         mainWindow.webContents.openDevTools()
     } else {
         // Production'da ASAR içinden yükle
-        const indexPath = path.join(app.getAppPath(), 'dist', 'index.html')
-        console.log('Loading:', indexPath)
-        mainWindow.loadFile(indexPath)
+        // Önce app.getAppPath() dene (ASAR için doğru yol)
+        const appPath = app.getAppPath()
+        const indexPath = path.join(appPath, 'dist', 'index.html')
+
+        console.log('=== Loading Production ===')
+        console.log('appPath:', appPath)
+        console.log('indexPath:', indexPath)
+
+        mainWindow.loadFile(indexPath).catch(err => {
+            console.error('Failed to load:', err.message)
+            dialog.showErrorBox('Load Error', `Path: ${indexPath}\nError: ${err.message}`)
+        })
     }
+
+    // Hata yakalama
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+        console.error('Page failed to load:', errorCode, errorDescription)
+    })
 
     // Pencere hazır olduğunda göster
     mainWindow.once('ready-to-show', () => {
