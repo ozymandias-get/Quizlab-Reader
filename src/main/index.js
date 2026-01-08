@@ -9,14 +9,24 @@ const { initUpdater, setupUpdaterIPC } = require('./updater')
 const isDev = process.env.NODE_ENV !== 'production' || !app.isPackaged
 
 function createWindow() {
+    // Preload script yolu
+    const preloadPath = isDev
+        ? path.join(__dirname, '../preload/index.js')
+        : path.join(app.getAppPath(), 'src', 'preload', 'index.js')
+
+    // Icon yolu
+    const iconPath = isDev
+        ? path.join(__dirname, '../../resources/icon.png')
+        : path.join(process.resourcesPath, 'resources', 'icon.png')
+
     const mainWindow = new BrowserWindow({
         width: 1400,
         height: 900,
         minWidth: 1000,
         minHeight: 600,
-        icon: path.join(__dirname, '../../resources/icon.png'),
+        icon: iconPath,
         webPreferences: {
-            preload: path.join(__dirname, '../preload/index.js'),
+            preload: preloadPath,
             nodeIntegration: false,
             contextIsolation: true,
             webviewTag: true,
@@ -34,7 +44,10 @@ function createWindow() {
         mainWindow.loadURL('http://localhost:5173')
         mainWindow.webContents.openDevTools()
     } else {
-        mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'))
+        // Production'da ASAR içinden yükle
+        const indexPath = path.join(app.getAppPath(), 'dist', 'index.html')
+        console.log('Loading:', indexPath)
+        mainWindow.loadFile(indexPath)
     }
 
     // Pencere hazır olduğunda göster
