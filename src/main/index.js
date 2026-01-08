@@ -4,6 +4,7 @@
 const { app, BrowserWindow, ipcMain, dialog, session } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const { initUpdater, setupUpdaterIPC } = require('./updater')
 
 const isDev = process.env.NODE_ENV !== 'production' || !app.isPackaged
 
@@ -94,6 +95,12 @@ ipcMain.handle('capture-screen', async (event, rect) => {
 
 app.whenReady().then(() => {
     createWindow()
+
+    // Updater IPC'lerini kur (dev modunda da çalışsın, sadece güncelleme kontrolü yapmaz)
+    setupUpdaterIPC()
+
+    // Auto updater'ı başlat (sadece production'da)
+    initUpdater()
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {

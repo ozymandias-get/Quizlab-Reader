@@ -13,7 +13,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
     captureScreen: () => ipcRenderer.invoke('capture-screen'),
 
     // Platform bilgisi
-    platform: process.platform
+    platform: process.platform,
+
+    // ===== UPDATER API =====
+    // Güncelleme kontrolü
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+
+    // Güncelleme indir
+    downloadUpdate: () => ipcRenderer.invoke('download-update'),
+
+    // Güncellemeyi kur ve yeniden başlat
+    installUpdate: () => ipcRenderer.invoke('install-update'),
+
+    // Uygulama sürümünü al
+    getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+
+    // Güncelleme olaylarını dinle
+    onUpdateAvailable: (callback) => {
+        ipcRenderer.on('update-available', (event, data) => callback(data))
+    },
+    onUpdateNotAvailable: (callback) => {
+        ipcRenderer.on('update-not-available', (event, data) => callback(data))
+    },
+    onDownloadProgress: (callback) => {
+        ipcRenderer.on('download-progress', (event, data) => callback(data))
+    },
+    onUpdateDownloaded: (callback) => {
+        ipcRenderer.on('update-downloaded', (event, data) => callback(data))
+    },
+    onUpdateError: (callback) => {
+        ipcRenderer.on('update-error', (event, data) => callback(data))
+    }
 })
 
 // Webview için gerekli

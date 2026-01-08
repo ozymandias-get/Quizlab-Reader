@@ -16,7 +16,11 @@
 </p>
 
 <p align="center">
-  <a href="./README.md">🇬🇧 English Documentation</a>
+  <a href="./README.md">🇬🇧 English</a> •
+  <a href="./docs/README_ZH.md">🇨🇳 中文</a> •
+  <a href="./docs/README_HI.md">🇮🇳 हिन्दी</a> •
+  <a href="./docs/README_ES.md">🇪🇸 Español</a> •
+  <a href="./docs/README_AR.md">🇸🇦 العربية</a>
 </p>
 
 ---

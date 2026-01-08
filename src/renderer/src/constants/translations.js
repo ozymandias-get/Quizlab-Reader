@@ -89,7 +89,21 @@ export const translations = {
         text_copied: 'Text copied!',
         screenshot_captured: 'Screenshot captured!',
         sending_to_ai: 'Sending to AI...',
-        sent_successfully: 'Sent successfully!'
+        sent_successfully: 'Sent successfully!',
+
+        // Updates
+        updates: 'Updates',
+        check_for_updates: 'Check for Updates',
+        checking_updates: 'Checking for updates...',
+        update_available: 'Update Available!',
+        update_not_available: 'You have the latest version',
+        new_version: 'New version',
+        current_version: 'Current version',
+        download_update: 'Download Update',
+        downloading: 'Downloading...',
+        install_restart: 'Install & Restart',
+        update_ready: 'Update ready to install',
+        update_error: 'Update error'
     },
 
     zh: {
@@ -132,7 +146,21 @@ export const translations = {
         text_copied: '文本已复制！',
         screenshot_captured: '截图已捕获！',
         sending_to_ai: '正在发送到 AI...',
-        sent_successfully: '发送成功！'
+        sent_successfully: '发送成功！',
+
+        // 更新
+        updates: '更新',
+        check_for_updates: '检查更新',
+        checking_updates: '正在检查更新...',
+        update_available: '有可用更新！',
+        update_not_available: '您已是最新版本',
+        new_version: '新版本',
+        current_version: '当前版本',
+        download_update: '下载更新',
+        downloading: '下载中...',
+        install_restart: '安装并重启',
+        update_ready: '更新已准备好安装',
+        update_error: '更新错误'
     },
 
     hi: {
@@ -175,7 +203,21 @@ export const translations = {
         text_copied: 'टेक्स्ट कॉपी हो गया!',
         screenshot_captured: 'स्क्रीनशॉट कैप्चर हो गया!',
         sending_to_ai: 'AI को भेजा जा रहा है...',
-        sent_successfully: 'सफलतापूर्वक भेजा गया!'
+        sent_successfully: 'सफलतापूर्वक भेजा गया!',
+
+        // अपडेट
+        updates: 'अपडेट',
+        check_for_updates: 'अपडेट की जांच करें',
+        checking_updates: 'अपडेट की जांच की जा रही है...',
+        update_available: 'अपडेट उपलब्ध है!',
+        update_not_available: 'आपके पास नवीनतम संस्करण है',
+        new_version: 'नया संस्करण',
+        current_version: 'वर्तमान संस्करण',
+        download_update: 'अपडेट डाउनलोड करें',
+        downloading: 'डाउनलोड हो रहा है...',
+        install_restart: 'इंस्टॉल करें और पुनः आरंभ करें',
+        update_ready: 'अपडेट इंस्टॉल के लिए तैयार है',
+        update_error: 'अपडेट त्रुटि'
     },
 
     es: {
@@ -218,7 +260,21 @@ export const translations = {
         text_copied: '¡Texto copiado!',
         screenshot_captured: '¡Captura de pantalla tomada!',
         sending_to_ai: 'Enviando a AI...',
-        sent_successfully: '¡Enviado con éxito!'
+        sent_successfully: '¡Enviado con éxito!',
+
+        // Actualizaciones
+        updates: 'Actualizaciones',
+        check_for_updates: 'Buscar Actualizaciones',
+        checking_updates: 'Buscando actualizaciones...',
+        update_available: '¡Actualización Disponible!',
+        update_not_available: 'Tienes la última versión',
+        new_version: 'Nueva versión',
+        current_version: 'Versión actual',
+        download_update: 'Descargar Actualización',
+        downloading: 'Descargando...',
+        install_restart: 'Instalar y Reiniciar',
+        update_ready: 'Actualización lista para instalar',
+        update_error: 'Error de actualización'
     },
 
     ar: {
@@ -261,7 +317,21 @@ export const translations = {
         text_copied: 'تم نسخ النص!',
         screenshot_captured: 'تم التقاط لقطة الشاشة!',
         sending_to_ai: 'جار الإرسال إلى AI...',
-        sent_successfully: 'تم الإرسال بنجاح!'
+        sent_successfully: 'تم الإرسال بنجاح!',
+
+        // التحديثات
+        updates: 'التحديثات',
+        check_for_updates: 'التحقق من التحديثات',
+        checking_updates: 'جار التحقق من التحديثات...',
+        update_available: 'يتوفر تحديث!',
+        update_not_available: 'لديك أحدث إصدار',
+        new_version: 'إصدار جديد',
+        current_version: 'الإصدار الحالي',
+        download_update: 'تحميل التحديث',
+        downloading: 'جار التحميل...',
+        install_restart: 'تثبيت وإعادة التشغيل',
+        update_ready: 'التحديث جاهز للتثبيت',
+        update_error: 'خطأ في التحديث'
     },
 
     tr: {
@@ -304,7 +374,21 @@ export const translations = {
         text_copied: 'Metin kopyalandı!',
         screenshot_captured: 'Ekran görüntüsü alındı!',
         sending_to_ai: "AI'ya gönderiliyor...",
-        sent_successfully: 'Başarıyla gönderildi!'
+        sent_successfully: 'Başarıyla gönderildi!',
+
+        // Güncellemeler
+        updates: 'Güncellemeler',
+        check_for_updates: 'Güncellemeleri Kontrol Et',
+        checking_updates: 'Güncellemeler kontrol ediliyor...',
+        update_available: 'Güncelleme Mevcut!',
+        update_not_available: 'En son sürümü kullanıyorsunuz',
+        new_version: 'Yeni sürüm',
+        current_version: 'Mevcut sürüm',
+        download_update: 'Güncellemeyi İndir',
+        downloading: 'İndiriliyor...',
+        install_restart: 'Kur ve Yeniden Başlat',
+        update_ready: 'Güncelleme yüklenmeye hazır',
+        update_error: 'Güncelleme hatası'
     }
 }
 

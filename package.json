@@ -3,26 +3,66 @@
   "version": "1.0.0",
   "description": "QuizLab-inspired split screen Electron app with PDF viewer and AI assistant",
   "main": "src/main/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ozymandias-get/Quizlab-Reader.git"
+  },
   "scripts": {
     "dev": "concurrently -k \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite --config vite.config.js",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
     "build": "vite build && electron-builder",
+    "build:win": "vite build && electron-builder --win",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:linux": "vite build && electron-builder --linux",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.quizlab.reader",
+    "productName": "Quizlab Reader",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "src/main/**/*",
+      "src/preload/**/*",
+      "resources/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "resources/icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "resources/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "resources/icon.png"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "ozymandias-get",
+      "repo": "Quizlab-Reader"
+    }
   },
   "keywords": [
     "electron",
     "react",
     "pdf-viewer",
-    "ai-assistant"
+    "ai-assistant",
+    "study-tool"
   ],
-  "author": "",
+  "author": "ozymandias-get",
   "license": "MIT",
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
     "electron": "^28.0.0",
+    "electron-builder": "^24.13.3",
+    "electron-updater": "^6.7.3",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.1",
     "vite": "^5.0.10",

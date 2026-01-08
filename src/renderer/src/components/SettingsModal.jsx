@@ -6,6 +6,49 @@ function SettingsModal({ isOpen, onClose }) {
     const [activeTab, setActiveTab] = useState('language')
     const modalRef = useRef(null)
 
+    // Update states
+    const [appVersion, setAppVersion] = useState('1.0.0')
+    const [updateStatus, setUpdateStatus] = useState('idle') // idle, checking, available, downloading, ready, error
+    const [updateInfo, setUpdateInfo] = useState(null)
+    const [downloadProgress, setDownloadProgress] = useState(0)
+
+    // Uygulama sürümünü al
+    useEffect(() => {
+        if (window.electronAPI?.getAppVersion) {
+            window.electronAPI.getAppVersion().then(version => {
+                if (version) setAppVersion(version)
+            })
+        }
+    }, [])
+
+    // Güncelleme olaylarını dinle
+    useEffect(() => {
+        if (!window.electronAPI) return
+
+        window.electronAPI.onUpdateAvailable?.((data) => {
+            setUpdateStatus('available')
+            setUpdateInfo(data)
+        })
+
+        window.electronAPI.onUpdateNotAvailable?.((data) => {
+            setUpdateStatus('idle')
+            setUpdateInfo(null)
+        })
+
+        window.electronAPI.onDownloadProgress?.((data) => {
+            setDownloadProgress(Math.round(data.percent))
+        })
+
+        window.electronAPI.onUpdateDownloaded?.((data) => {
+            setUpdateStatus('ready')
+        })
+
+        window.electronAPI.onUpdateError?.((data) => {
+            setUpdateStatus('error')
+            console.error('Update error:', data.message)
+        })
+    }, [])
+
     // ESC tuşu ile kapatma
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -31,6 +74,37 @@ function SettingsModal({ isOpen, onClose }) {
         }
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [isOpen, onClose])
+
+    // Güncelleme kontrolü
+    const checkForUpdates = async () => {
+        if (!window.electronAPI?.checkForUpdates) {
+            setUpdateStatus('error')
+            return
+        }
+        setUpdateStatus('checking')
+        try {
+            const result = await window.electronAPI.checkForUpdates()
+            if (!result.available) {
+                setUpdateStatus('idle')
+            }
+        } catch (error) {
+            setUpdateStatus('error')
+        }
+    }
+
+    // Güncelleme indir
+    const downloadUpdate = async () => {
+        if (!window.electronAPI?.downloadUpdate) return
+        setUpdateStatus('downloading')
+        setDownloadProgress(0)
+        await window.electronAPI.downloadUpdate()
+    }
+
+    // Güncellemeyi kur
+    const installUpdate = () => {
+        if (!window.electronAPI?.installUpdate) return
+        window.electronAPI.installUpdate()
+    }
 
     if (!isOpen) return null
 
@@ -134,31 +208,115 @@ function SettingsModal({ isOpen, onClose }) {
                     )}
 
                     {activeTab === 'about' && (
-                        <div className="space-y-6 text-center">
-                            <div className="flex justify-center">
-                                <img
-                                    src="/public/icon.png"
-                                    alt="Quizlab Reader"
-                                    className="w-20 h-20 rounded-2xl shadow-lg"
-                                />
-                            </div>
-                            <div>
+                        <div className="space-y-6">
+                            {/* App Info */}
+                            <div className="text-center">
+                                <div className="flex justify-center mb-4">
+                                    <img
+                                        src="/public/icon.png"
+                                        alt="Quizlab Reader"
+                                        className="w-20 h-20 rounded-2xl shadow-lg"
+                                    />
+                                </div>
                                 <h3 className="text-xl font-bold text-stone-100">Quizlab Reader</h3>
-                                <p className="text-stone-400 text-sm mt-1">{t('version')} 1.0.0</p>
+                                <p className="text-stone-400 text-sm mt-1">{t('version')} {appVersion}</p>
                             </div>
-                            <p className="text-stone-400 text-sm leading-relaxed">
-                                PDF reading and AI assistance combined in one modern application.
-                            </p>
-                            <div className="flex justify-center gap-4 pt-4">
+
+                            {/* Update Section */}
+                            <div className="bg-stone-800/50 rounded-xl p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-stone-300 font-medium">{t('updates')}</span>
+                                    {updateStatus === 'available' && (
+                                        <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
+                                            {t('update_available')}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Status Messages */}
+                                {updateStatus === 'idle' && (
+                                    <p className="text-stone-500 text-sm">{t('update_not_available')}</p>
+                                )}
+
+                                {updateStatus === 'checking' && (
+                                    <div className="flex items-center gap-2 text-stone-400 text-sm">
+                                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                        </svg>
+                                        {t('checking_updates')}
+                                    </div>
+                                )}
+
+                                {updateStatus === 'available' && updateInfo && (
+                                    <div className="text-sm">
+                                        <p className="text-green-400">{t('new_version')}: {updateInfo.version}</p>
+                                    </div>
+                                )}
+
+                                {updateStatus === 'downloading' && (
+                                    <div className="space-y-2">
+                                        <p className="text-stone-400 text-sm">{t('downloading')} {downloadProgress}%</p>
+                                        <div className="w-full h-2 bg-stone-700 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-indigo-500 transition-all duration-300"
+                                                style={{ width: `${downloadProgress}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {updateStatus === 'ready' && (
+                                    <p className="text-green-400 text-sm">{t('update_ready')}</p>
+                                )}
+
+                                {updateStatus === 'error' && (
+                                    <p className="text-red-400 text-sm">{t('update_error')}</p>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2 pt-2">
+                                    {(updateStatus === 'idle' || updateStatus === 'error') && (
+                                        <button
+                                            onClick={checkForUpdates}
+                                            className="flex-1 px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-sm font-medium rounded-lg transition-colors"
+                                        >
+                                            {t('check_for_updates')}
+                                        </button>
+                                    )}
+
+                                    {updateStatus === 'available' && (
+                                        <button
+                                            onClick={downloadUpdate}
+                                            className="flex-1 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-300 text-sm font-medium rounded-lg transition-colors"
+                                        >
+                                            {t('download_update')}
+                                        </button>
+                                    )}
+
+                                    {updateStatus === 'ready' && (
+                                        <button
+                                            onClick={installUpdate}
+                                            className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
+                                        >
+                                            {t('install_restart')}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* GitHub Link */}
+                            <div className="flex justify-center pt-2">
                                 <a
                                     href="https://github.com/ozymandias-get/Quizlab-Reader"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-2 rounded-lg bg-stone-800 hover:bg-stone-700 transition-colors text-stone-300"
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 transition-colors text-stone-300 text-sm"
                                 >
                                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                                     </svg>
+                                    GitHub
                                 </a>
                             </div>
                         </div>
