@@ -1,0 +1,326 @@
+/* ============================================
+   FLOATING BAR - Premium Glassmorphism Control Bar
+   ============================================ */
+
+/* Ana konteyner - Kapalı durum: Zarif buzlu cam şerit */
+.floating-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Kapalı boyutlar - daha belirgin */
+  min-width: 200px;
+  height: 10px;
+  padding: 0;
+  
+  /* Premium buzlu cam efekti - daha parlak */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  
+  /* İç parlama efekti - cam kenarları - daha belirgin */
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 255, 255, 0.4);
+  border-radius: 100px;
+  
+  /* Sabit koyu mavi ışık süzmesi - hafif */
+  box-shadow: 
+    0 0 15px rgba(59, 130, 246, 0.12),
+    0 0 30px rgba(59, 130, 246, 0.06),
+    0 4px 24px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(59, 130, 246, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  
+  /* Organik açılma animasyonu */
+  transition: 
+    all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  
+  /* Kapalıyken indicator görünsün */
+  overflow: visible;
+}
+
+/* AutoSend aktifken yeşil glow */
+.floating-bar--active {
+  box-shadow: 
+    0 0 25px rgba(74, 222, 128, 0.25),
+    0 0 50px rgba(74, 222, 128, 0.12),
+    0 4px 24px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(74, 222, 128, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-color: rgba(74, 222, 128, 0.3);
+  border-top-color: rgba(74, 222, 128, 0.5);
+}
+
+/* Açık durum: İçerikle birlikte genişleme */
+.floating-bar--expanded {
+  min-width: 280px;
+  height: 58px;
+  padding: 9px 14px;
+  border-radius: 20px;
+  
+  /* Açıkken daha koyu, daha belirgin */
+  background: linear-gradient(
+    180deg,
+    rgba(35, 35, 35, 0.92) 0%,
+    rgba(18, 18, 18, 0.95) 100%
+  );
+  
+  /* Daha belirgin kenar parlaması */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.18);
+  
+  /* Keskin, derin gölge */
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  
+  /* Açıkken içerik taşmasını önle */
+  overflow: hidden;
+}
+
+/* İçerik container - Senkronize animasyon */
+.floating-bar__content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  /* Başlangıç durumu: Gizli, küçük, aşağıda */
+  opacity: 0;
+  transform: translateY(15px) scale(0.85);
+  filter: blur(4px);
+  
+  /* Açılma animasyonu - container ile senkronize */
+  transition: 
+    opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.08s,
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.05s,
+    filter 0.3s ease 0.1s;
+  
+  pointer-events: none;
+}
+
+/* İçerik görünür durumu */
+.floating-bar__content--visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+  pointer-events: auto;
+}
+
+/* Tutma yeri göstergesi - Premium Nefes Alan Işık Çizgisi */
+.floating-bar__indicator {
+  position: absolute;
+  z-index: 10;
+  width: 80px;
+  height: 5px;
+  
+  /* Sabit koyu mavi ton - hafif */
+  background: linear-gradient(
+    90deg, 
+    rgba(59, 130, 246, 0) 0%,
+    rgba(59, 130, 246, 0.25) 15%,
+    rgba(96, 165, 250, 0.45) 35%,
+    rgba(96, 165, 250, 0.55) 50%,
+    rgba(96, 165, 250, 0.45) 65%,
+    rgba(59, 130, 246, 0.25) 85%,
+    rgba(59, 130, 246, 0) 100%
+  );
+  
+  /* Yumuşak pill şekli */
+  border-radius: 100px;
+  
+  /* Sabit koyu mavi glow - hafif */
+  border: none;
+  box-shadow: 
+    0 0 12px rgba(59, 130, 246, 0.25),
+    0 0 24px rgba(59, 130, 246, 0.1);
+  
+  /* Animasyon yok - sabit görünüm */
+  opacity: 0.7;
+  
+  transition: 
+    opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.4s ease;
+}
+
+/* Mavi nefes alma animasyonu */
+@keyframes breathingLightBlue {
+  0%, 100% {
+    opacity: 0.5;
+    box-shadow: 
+      0 0 12px rgba(99, 179, 237, 0.25),
+      0 0 24px rgba(99, 179, 237, 0.1);
+  }
+  50% {
+    opacity: 0.85;
+    box-shadow: 
+      0 0 20px rgba(99, 179, 237, 0.45),
+      0 0 40px rgba(99, 179, 237, 0.2);
+  }
+}
+
+/* Hover'da gösterge kaybolur - yumuşak geçiş */
+.floating-bar--expanded .floating-bar__indicator {
+  opacity: 0;
+  transform: scale(0.3) translateY(8px);
+  filter: blur(4px);
+  animation: none;
+}
+
+/* AutoSend aktifken indicator yeşil */
+.floating-bar__indicator--active {
+  background: linear-gradient(
+    90deg, 
+    rgba(74, 222, 128, 0) 0%,
+    rgba(74, 222, 128, 0.4) 15%,
+    rgba(74, 222, 128, 0.8) 35%,
+    rgba(74, 222, 128, 0.95) 50%,
+    rgba(74, 222, 128, 0.8) 65%,
+    rgba(74, 222, 128, 0.4) 85%,
+    rgba(74, 222, 128, 0) 100%
+  );
+  box-shadow: 
+    0 0 20px rgba(74, 222, 128, 0.5),
+    0 0 40px rgba(74, 222, 128, 0.2),
+    inset 0 0 4px rgba(74, 222, 128, 0.3);
+  animation: breathingLightGreen 3.5s ease-in-out infinite;
+}
+
+/* Yeşil nefes animasyonu */
+@keyframes breathingLightGreen {
+  0%, 100% {
+    opacity: 0.5;
+    box-shadow: 
+      0 0 15px rgba(74, 222, 128, 0.3),
+      0 0 30px rgba(74, 222, 128, 0.1);
+  }
+  50% {
+    opacity: 0.9;
+    box-shadow: 
+      0 0 25px rgba(74, 222, 128, 0.5),
+      0 0 50px rgba(74, 222, 128, 0.2);
+  }
+}
+
+/* ============================================
+   FLOATING BUTTONS - İç butonlar
+   ============================================ */
+
+.floating-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  
+  /* Cam buton efekti */
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  
+  /* Yumuşak geçişler */
+  transition: 
+    all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.floating-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.floating-btn:active {
+  transform: translateY(0);
+  transition-duration: 0.1s;
+}
+
+.floating-btn svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s ease;
+}
+
+.floating-btn:hover svg {
+  transform: scale(1.08);
+}
+
+.floating-btn__label {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* Amber buton (ekran görüntüsü) */
+.floating-btn--amber {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.2);
+}
+
+.floating-btn--amber:hover {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: #fcd34d;
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.15);
+}
+
+/* Aktif buton (otomatik gönder açık) */
+.floating-btn--active {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.25);
+}
+
+.floating-btn--active:hover {
+  background: rgba(74, 222, 128, 0.2);
+  border-color: rgba(74, 222, 128, 0.35);
+  box-shadow: 0 4px 16px rgba(74, 222, 128, 0.15);
+}
+
+/* Model butonları */
+.floating-btn--model {
+  padding: 0 16px;
+}
+
+.floating-btn--selected {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.floating-btn--selected:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Ayırıcı */
+.floating-divider {
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 30%,
+    rgba(255, 255, 255, 0.15) 70%,
+    transparent 100%
+  );
+  margin: 0 6px;
+}
