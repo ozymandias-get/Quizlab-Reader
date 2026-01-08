@@ -18,7 +18,6 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest]
-        # Diğer platformlar için: [windows-latest, macos-latest, ubuntu-latest]
     
     steps:
       - name: Checkout code
@@ -31,12 +30,21 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-optional
+        env:
+          npm_config_canvas_binary_host_mirror: "https://example.com/fake"
 
-      - name: Build application
-        run: npm run build
+      - name: Build Vite
+        run: npx vite build
+
+      - name: Build Electron
+        run: npx electron-builder --win --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List release files
+        run: Get-ChildItem -Path release -Recurse
+        shell: pwsh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -44,11 +52,8 @@ jobs:
           name: release-${{ matrix.os }}
           path: |
             release/*.exe
-            release/*.msi
-            release/*.dmg
-            release/*.AppImage
-            release/*.deb
             release/*.yml
+            release/latest.yml
           if-no-files-found: warn
 
   release:
@@ -69,12 +74,27 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: List downloaded files
+        run: ls -la artifacts/
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/*
+          files: |
+            artifacts/*.exe
+            artifacts/*.yml
           draft: false
           prerelease: false
           generate_release_notes: true
+          body: |
+            ## 📥 Download
+            
+            **Windows:** Download the `.exe` file below and run the installer.
+            
+            ## ✨ What's New
+            - Multi-language support (EN, TR, ZH, HI, ES, AR)
+            - Auto-update system
+            - Settings panel with language selection
+            - NSIS installer with setup wizard
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
