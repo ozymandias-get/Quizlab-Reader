@@ -9,6 +9,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // PDF seçme
     selectPdf: () => ipcRenderer.invoke('select-pdf'),
 
+    // Dosya yolundan streamUrl üret (drag & drop için)
+    getPdfStreamUrl: (filePath) => ipcRenderer.invoke('get-pdf-stream-url', filePath),
+
     // Ekran görüntüsü alma
     captureScreen: () => ipcRenderer.invoke('capture-screen'),
 

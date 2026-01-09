@@ -66,6 +66,8 @@ export const translations = {
         auto_send: 'Auto Send',
         auto_send_on: 'Auto Send: ON',
         auto_send_off: 'Auto Send: OFF',
+        explorer: 'Explorer',
+        viewer: 'Viewer',
 
         // AI Panel
         send_to_ai: 'Send to AI',
@@ -135,6 +137,8 @@ export const translations = {
         auto_send: '自动发送',
         auto_send_on: '自动发送：开',
         auto_send_off: '自动发送：关',
+        explorer: '资源管理器',
+        viewer: '查看器',
 
         // AI 面板
         send_to_ai: '发送到 AI',
@@ -192,6 +196,8 @@ export const translations = {
         auto_send: 'ऑटो भेजें',
         auto_send_on: 'ऑटो भेजें: चालू',
         auto_send_off: 'ऑटो भेजें: बंद',
+        explorer: 'एक्सप्लोरर',
+        viewer: 'व्यूअर',
 
         // AI पैनल
         send_to_ai: 'AI को भेजें',
@@ -249,6 +255,8 @@ export const translations = {
         auto_send: 'Envío automático',
         auto_send_on: 'Envío automático: ON',
         auto_send_off: 'Envío automático: OFF',
+        explorer: 'Explorador',
+        viewer: 'Visor',
 
         // Panel AI
         send_to_ai: 'Enviar a AI',
@@ -306,6 +314,8 @@ export const translations = {
         auto_send: 'إرسال تلقائي',
         auto_send_on: 'الإرسال التلقائي: تشغيل',
         auto_send_off: 'الإرسال التلقائي: إيقاف',
+        explorer: 'المستكشف',
+        viewer: 'العارض',
 
         // لوحة AI
         send_to_ai: 'إرسال إلى AI',
@@ -363,6 +373,8 @@ export const translations = {
         auto_send: 'Otomatik Gönder',
         auto_send_on: 'Otomatik Gönder: AÇIK',
         auto_send_off: 'Otomatik Gönder: KAPALI',
+        explorer: 'Gezgin',
+        viewer: 'Görüntüleyici',
 
         // AI Paneli
         send_to_ai: "AI'ya Gönder",

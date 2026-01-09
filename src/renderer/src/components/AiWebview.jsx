@@ -129,7 +129,7 @@ function AiWebview() {
                     if (!isInternalLink) {
                         // Harici link - navigasyonu engelle ve sistem tarayıcısında aç
                         event.preventDefault()
-                        console.log('[AiWebview] Harici link sistem tarayıcısında açılıyor:', event.url)
+
                         window.electronAPI?.openExternal?.(event.url)
                     }
                 } catch (error) {
@@ -172,7 +172,7 @@ function AiWebview() {
             },
             // Webview tekrar yanıt vermeye başladı
             handleResponsive: () => {
-                console.log('[AiWebview] Webview tekrar yanıt veriyor:', aiId)
+
                 // Crash retry sayacını sıfırla
                 crashRetryCount.current[aiId] = 0
             }

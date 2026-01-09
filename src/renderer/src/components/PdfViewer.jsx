@@ -111,15 +111,13 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
         if (pdfFile && pdfFile.streamUrl) {
             // Streaming URL doğrudan kullanılır
             // Main process'ten gelen local-pdf:// protokolü
-            console.log('[PdfViewer] Setting pdfUrl:', pdfFile.streamUrl)
+
             setPdfUrl(pdfFile.streamUrl)
 
             // Cleanup - streamUrl için revoke gerekmiyor çünkü
             // bu bir blob URL değil, custom protocol URL
-            return () => {
-                // Sadece state'i temizle
-                // Not: authorizedPdfPaths main process'te otomatik temizlenir
-            }
+            // Sadece state'i temizle
+            // Not: authorizedPdfPaths main process'te otomatik temizlenir
         }
     }, [pdfFile])
 
@@ -254,9 +252,9 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
 
     // PDF yüklendiğinde viewer göster
     return (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden h-full min-h-0">
             {/* PDF Viewer Container */}
-            <div ref={containerRef} className="flex-1 overflow-hidden pdf-viewer-container">
+            <div ref={containerRef} className="flex-1 overflow-hidden pdf-viewer-container h-full min-h-0">
                 <Worker workerUrl={pdfjsWorker}>
                     <Viewer
                         fileUrl={pdfUrl}
@@ -265,7 +263,7 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
                         scrollMode={ScrollMode.Page}
                         onPageChange={handlePageChange}
                         onDocumentLoad={(e) => {
-                            console.log('[PdfViewer] Document loaded:', e.doc.numPages, 'pages')
+
                             handleDocumentLoad(e)
                         }}
                         renderError={(error) => {

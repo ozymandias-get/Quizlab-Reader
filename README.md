@@ -47,22 +47,22 @@
 
 ## 🖼️ Screenshots
 
-<details>
+<details open>
 <summary>Click to view screenshots</summary>
 
-### Main Interface
+### Main Interface with ChatGPT
 The application features a clean, modern split-screen interface with glassmorphism design elements.
+![Main Interface - ChatGPT](docs/screenshots/main-interface-chatgpt.png)
 
-### PDF Viewer
-- Page navigation controls
-- Zoom in/out functionality
-- Text selection with floating "Send to AI" button
-- Screenshot capture tool
+### Main Interface with Gemini
+Seamlessly switch between AI platforms with the bottom bar controls.
+![Main Interface - Gemini](docs/screenshots/main-interface-gemini.png)
 
-### AI Panel
-- Switch between ChatGPT and Gemini
-- Seamless integration with AI platforms
-- Auto-send toggle for quick interactions
+### Key UI Elements
+- **File Explorer** - Premium glassmorphism header with drag-and-drop support
+- **PDF Viewer** - Page navigation, zoom controls, text selection with floating "Send to AI" button
+- **AI Panel** - Switch between ChatGPT and Gemini with auto-send toggle
+- **Bottom Bar** - Quick access to AI platforms and settings
 
 </details>
 
@@ -122,7 +122,25 @@ Quizlab-Reader/
 │           │   ├── BottomBar.jsx        # Bottom control bar
 │           │   ├── FloatingButton.jsx   # "Send to AI" floating button
 │           │   ├── PdfViewer.jsx        # PDF viewer component
-│           │   └── ScreenshotTool.jsx   # Screenshot capture tool
+│           │   ├── ScreenshotTool.jsx   # Screenshot capture tool
+│           │   ├── SettingsModal.jsx    # Settings modal component
+│           │   │
+│           │   └── FileExplorer/        # 📁 Modular File Explorer
+│           │       ├── index.jsx              # Main FileExplorer component
+│           │       ├── TreeItem.jsx           # Tree item with drag-drop
+│           │       ├── FileExplorerHeader.jsx # Glassmorphism header
+│           │       ├── FileExplorerFooter.jsx # Stats footer
+│           │       ├── DeleteConfirmModal.jsx # Custom delete dialog
+│           │       ├── DropOverlay.jsx        # Drag-drop overlay
+│           │       ├── EmptyState.jsx         # Empty library state
+│           │       ├── NewFolderInput.jsx     # New folder input
+│           │       ├── icons/                 # SVG icon components
+│           │       │   └── FileExplorerIcons.jsx
+│           │       └── hooks/                 # Custom hooks
+│           │           └── useExternalDragDrop.js
+│           │
+│           ├── context/         # React context providers
+│           │   └── FileContext.jsx      # File system state management
 │           │
 │           ├── hooks/           # Custom React hooks
 │           │   ├── index.js             # Hooks barrel export
@@ -146,6 +164,12 @@ Quizlab-Reader/
 │                   ├── _resizer.css
 │                   ├── _screenshot.css
 │                   └── _utilities.css
+│
+├── docs/                        # Documentation
+│   ├── screenshots/             # Application screenshots
+│   │   ├── main-interface-chatgpt.png
+│   │   └── main-interface-gemini.png
+│   └── README_*.md              # Translations
 │
 ├── package.json                 # Project dependencies and scripts
 ├── vite.config.js               # Vite configuration

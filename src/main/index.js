@@ -24,12 +24,12 @@ const gotTheLock = app.requestSingleInstanceLock()
 
 if (!gotTheLock) {
     // Başka bir instance zaten çalışıyor - bu instance'ı kapat
-    console.log('[SingleInstance] Başka bir instance zaten çalışıyor, kapatılıyor...')
+
     app.quit()
 } else {
     // İkinci instance açılmaya çalışıldığında
     app.on('second-instance', (event, commandLine, workingDirectory) => {
-        console.log('[SingleInstance] İkinci instance tespit edildi, mevcut pencere focus\'lanıyor')
+
 
         const mainWindow = BrowserWindow.getAllWindows()[0]
         if (mainWindow) {
@@ -76,9 +76,7 @@ function registerPdfProtocol() {
             // Host'tan ID'yi al (local-pdf://pdf_123 -> host = pdf_123)
             const pdfId = url.host
 
-            console.log('[PDF Protocol] Request URL:', request.url)
-            console.log('[PDF Protocol] Parsed ID from host:', pdfId)
-            console.log('[PDF Protocol] Authorized paths:', Array.from(authorizedPdfPaths.keys()))
+
 
             // Yetkilendirilmiş dosya yolunu bul
             const filePath = authorizedPdfPaths.get(pdfId)
@@ -88,7 +86,7 @@ function registerPdfProtocol() {
                 return new Response('Unauthorized', { status: 403 })
             }
 
-            console.log('[PDF Protocol] Dosya yolu:', filePath)
+
 
             // Dosya var mı kontrol et
             if (!fs.existsSync(filePath)) {
@@ -98,7 +96,7 @@ function registerPdfProtocol() {
 
             // Dosya boyutunu al
             const stats = await fs.promises.stat(filePath)
-            console.log('[PDF Protocol] Dosya boyutu:', stats.size, 'bytes')
+
 
             // Dosyayı stream olarak oku - RAM'de tamamen tutmaz
             const stream = fs.createReadStream(filePath)
@@ -122,7 +120,7 @@ function registerPdfProtocol() {
                 }
             })
 
-            console.log('[PDF Protocol] Stream başlatıldı')
+
 
             return new Response(webStream, {
                 status: 200,
@@ -155,7 +153,7 @@ function loadWindowState() {
         if (fs.existsSync(windowStateFile)) {
             const data = fs.readFileSync(windowStateFile, 'utf-8')
             const state = JSON.parse(data)
-            console.log('[WindowState] Yüklendi:', state)
+            // console.log('[WindowState] Yüklendi:', state)
             return state
         }
     } catch (error) {
@@ -189,7 +187,7 @@ function saveWindowState(window) {
         }
 
         fs.writeFileSync(windowStateFile, JSON.stringify(state, null, 2))
-        console.log('[WindowState] Kaydedildi:', state)
+        // console.log('[WindowState] Kaydedildi:', state)
     } catch (error) {
         console.warn('[WindowState] Kaydetme hatası:', error.message)
     }
@@ -267,9 +265,7 @@ function createWindow() {
         const appPath = app.getAppPath()
         const indexPath = path.join(appPath, 'dist', 'index.html')
 
-        console.log('=== Loading Production ===')
-        console.log('appPath:', appPath)
-        console.log('indexPath:', indexPath)
+
 
         mainWindow.loadFile(indexPath).catch(err => {
             console.error('Failed to load:', err.message)
@@ -335,7 +331,7 @@ ipcMain.handle('select-pdf', async () => {
 
         // Eski yolları temizle (bellek sızıntısını önle)
         // Son 10 PDF'i tut, eskilerini sil
-        if (authorizedPdfPaths.size > 10) {
+        if (authorizedPdfPaths.size > 50) {
             const firstKey = authorizedPdfPaths.keys().next().value
             authorizedPdfPaths.delete(firstKey)
         }
@@ -356,6 +352,40 @@ ipcMain.handle('select-pdf', async () => {
 
 // IPC Handler: Ekran görüntüsü yakalama
 // Not: Tüm pencereyi yakalar, kırpma işlemi renderer tarafında (Canvas) yapılır
+
+// IPC Handler: Dosya yolundan streamUrl üret
+// Drag & drop ile eklenen PDF'ler için kullanılır
+ipcMain.handle('get-pdf-stream-url', async (event, filePath) => {
+    try {
+        if (!filePath) {
+            console.error('[get-pdf-stream-url] Dosya yolu belirtilmedi')
+            return null
+        }
+
+        // Dosyanın var olduğunu ve okunabilir olduğunu kontrol et
+        await fs.promises.access(filePath, fs.constants.R_OK)
+
+        // Benzersiz ID oluştur ve dosya yolunu yetkilendir
+        const pdfId = generatePdfId()
+        authorizedPdfPaths.set(pdfId, filePath)
+
+        // Eski yolları temizle (bellek sızıntısını önle)
+        if (authorizedPdfPaths.size > 50) {
+            const firstKey = authorizedPdfPaths.keys().next().value
+            authorizedPdfPaths.delete(firstKey)
+        }
+
+
+
+        return {
+            streamUrl: `local-pdf://${pdfId}`
+        }
+    } catch (error) {
+        console.error('[get-pdf-stream-url] Hata:', error)
+        return null
+    }
+})
+
 ipcMain.handle('capture-screen', async () => {
     try {
         const mainWindow = BrowserWindow.getAllWindows()[0]
@@ -386,7 +416,7 @@ ipcMain.handle('copy-image-to-clipboard', async (event, dataUrl) => {
 
         // Sistem clipboard'una kopyala
         clipboard.writeImage(image)
-        console.log('[Clipboard] Görüntü panoya kopyalandı')
+
         return true
     } catch (error) {
         console.error('[Clipboard] Görüntü kopyalama hatası:', error)
@@ -412,14 +442,16 @@ ipcMain.handle('open-external', async (event, url) => {
 })
 
 app.whenReady().then(() => {
+    // Single Instance Lock kontrolü
+    // Eğer lock alınamadıysa (ikinci instance ise) pencere açma, quit bekle
+    if (!gotTheLock) return
+
     // PDF streaming protokolünü kaydet - pencere oluşturmadan önce
     registerPdfProtocol()
 
     createWindow()
 
     // Auto updater'ı başlat
-    // initUpdater hem IPC kurulumunu hem de otomatik kontrol başlatmayı yapar
-    // Development modunda sadece IPC kurulur, güncelleme kontrolü yapılmaz
     initUpdater()
 
     app.on('activate', () => {

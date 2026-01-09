@@ -90,30 +90,71 @@ export function AppProvider({ children }) {
                 return false
             }
 
-            // 2. Webview'da input'a focus yap ve yapıştır
+            // 2. Webview'da input'a focus yap
             await webview.executeJavaScript(`
                 (function() {
                     const input = document.querySelector('${aiConfig.inputSelector}');
                     if (input) {
                         input.focus();
-                        // Yapıştır komutu - bazı sitelerde çalışır
-                        document.execCommand('paste');
                         return true;
                     }
                     return false;
                 })()
             `)
 
-            // 3. Kullanıcıya Ctrl+V yapması gerektiğini bildir
-            // (bazı siteler programatik paste'i engelleyebilir)
-            console.log('[sendImageToAI] Görüntü panoya kopyalandı. Ctrl+V ile yapıştırın.')
+            // 3. Klavye kısayolu ile yapıştır (Ctrl+V / Cmd+V)
+            // execCommand('paste') güvenilir değil, native event gönderiyoruz
+            const activeWebview = webview.getActiveWebview()
+            if (activeWebview) {
+                const isMac = window.electronAPI?.platform === 'darwin'
+                const modifier = isMac ? 'meta' : 'control'
+
+                // Input event gönder
+                activeWebview.sendInputEvent({
+                    type: 'keyDown',
+                    keyCode: 'v',
+                    modifiers: [modifier]
+                })
+
+                activeWebview.sendInputEvent({
+                    type: 'char',
+                    keyCode: 'v',
+                    modifiers: [modifier]
+                })
+
+                activeWebview.sendInputEvent({
+                    type: 'keyUp',
+                    keyCode: 'v',
+                    modifiers: [modifier]
+                })
+            }
+
+            // 4. Otomatik gönder aktifse, gönder butonuna tıkla
+            if (autoSend && aiConfig.sendButtonSelector) {
+                // Resmin yüklenmesi için biraz bekle
+                await new Promise(resolve => setTimeout(resolve, 1000))
+
+                await webview.executeJavaScript(`
+                    (function() {
+                        const btn = document.querySelector('${aiConfig.sendButtonSelector}');
+                        if (btn) {
+                            // Buton disabled değilse tıkla
+                            if (!btn.disabled && btn.getAttribute('aria-disabled') !== 'true') {
+                                btn.click();
+                                return true;
+                            }
+                        }
+                        return false;
+                    })()
+                `)
+            }
 
             return true
         } catch (error) {
             console.error('Görüntü gönderme hatası:', error)
             return false
         }
-    }, [currentAI])
+    }, [currentAI, autoSend])
 
     // Screenshot işlemleri
     const {

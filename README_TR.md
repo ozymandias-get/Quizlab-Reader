@@ -46,22 +46,22 @@
 
 ## 🖼️ Ekran Görüntüleri
 
-<details>
+<details open>
 <summary>Ekran görüntülerini görmek için tıklayın</summary>
 
-### Ana Arayüz
+### ChatGPT ile Ana Arayüz
 Uygulama, cam efekti tasarım öğeleriyle temiz ve modern bir bölünmüş ekran arayüzü sunar.
+![Ana Arayüz - ChatGPT](docs/screenshots/main-interface-chatgpt.png)
 
-### PDF Görüntüleyici
-- Sayfa gezinme kontrolleri
-- Yakınlaştırma/uzaklaştırma işlevi
-- Kayan "AI'ya Gönder" butonu ile metin seçimi
-- Ekran görüntüsü yakalama aracı
+### Gemini ile Ana Arayüz
+Alt çubuk kontrolleriyle yapay zeka platformları arasında sorunsuz geçiş yapın.
+![Ana Arayüz - Gemini](docs/screenshots/main-interface-gemini.png)
 
-### Yapay Zeka Paneli
-- ChatGPT ve Gemini arasında geçiş yapın
-- Yapay zeka platformlarıyla sorunsuz entegrasyon
-- Hızlı etkileşimler için otomatik gönderme düğmesi
+### Temel Arayüz Öğeleri
+- **Dosya Gezgini** - Sürükle-bırak destekli premium cam efekti başlık
+- **PDF Görüntüleyici** - Sayfa gezinme, yakınlaştırma kontrolleri, kayan "AI'ya Gönder" butonu ile metin seçimi
+- **Yapay Zeka Paneli** - Otomatik gönderme ile ChatGPT ve Gemini arasında geçiş
+- **Alt Çubuk** - Yapay zeka platformlarına ve ayarlara hızlı erişim
 
 </details>
 
@@ -121,7 +121,25 @@ Quizlab-Reader/
 │           │   ├── BottomBar.jsx        # Alt kontrol çubuğu
 │           │   ├── FloatingButton.jsx   # "AI'ya Gönder" kayan butonu
 │           │   ├── PdfViewer.jsx        # PDF görüntüleyici bileşeni
-│           │   └── ScreenshotTool.jsx   # Ekran görüntüsü yakalama aracı
+│           │   ├── ScreenshotTool.jsx   # Ekran görüntüsü yakalama aracı
+│           │   ├── SettingsModal.jsx    # Ayarlar modal bileşeni
+│           │   │
+│           │   └── FileExplorer/        # 📁 Modüler Dosya Gezgini
+│           │       ├── index.jsx              # Ana FileExplorer bileşeni
+│           │       ├── TreeItem.jsx           # Sürükle-bırak destekli ağaç öğesi
+│           │       ├── FileExplorerHeader.jsx # Cam efekti başlık
+│           │       ├── FileExplorerFooter.jsx # İstatistik alt bilgi
+│           │       ├── DeleteConfirmModal.jsx # Özel silme dialogu
+│           │       ├── DropOverlay.jsx        # Sürükle-bırak overlay'ı
+│           │       ├── EmptyState.jsx         # Boş kütüphane durumu
+│           │       ├── NewFolderInput.jsx     # Yeni klasör girişi
+│           │       ├── icons/                 # SVG ikon bileşenleri
+│           │       │   └── FileExplorerIcons.jsx
+│           │       └── hooks/                 # Özel hook'lar
+│           │           └── useExternalDragDrop.js
+│           │
+│           ├── context/         # React context sağlayıcıları
+│           │   └── FileContext.jsx      # Dosya sistemi durum yönetimi
 │           │
 │           ├── hooks/           # Özel React hook'ları
 │           │   ├── index.js             # Hook'ların toplu dışa aktarımı
@@ -145,6 +163,12 @@ Quizlab-Reader/
 │                   ├── _resizer.css
 │                   ├── _screenshot.css
 │                   └── _utilities.css
+│
+├── docs/                        # Dokümantasyon
+│   ├── screenshots/             # Uygulama ekran görüntüleri
+│   │   ├── main-interface-chatgpt.png
+│   │   └── main-interface-gemini.png
+│   └── README_*.md              # Çeviriler
 │
 ├── package.json                 # Proje bağımlılıkları ve betikler
 ├── vite.config.js               # Vite yapılandırması

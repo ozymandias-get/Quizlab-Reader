@@ -65,23 +65,4 @@
   color: #e7e5e4;
 }
 
-/* ============================================
-   AI TAB STYLES
-   ============================================ */
 
-.ai-tab {
-  color: #78716c;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-}
-
-.ai-tab:hover {
-  color: #a8a29e;
-  background: rgba(68, 64, 60, 0.3);
-}
-
-.ai-tab.active {
-  color: #fafaf9;
-  background: rgba(68, 64, 60, 0.5);
-}

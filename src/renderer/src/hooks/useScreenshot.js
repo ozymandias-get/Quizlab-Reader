@@ -30,7 +30,7 @@ export function useScreenshot(onSendToAI) {
      * @param {Object} rect - Seçim dikdörtgeni {width, height, x, y}
      */
     const handleCapture = useCallback(async (imageData, rect) => {
-        console.log('Ekran görüntüsü yakalandı:', rect.width, 'x', rect.height)
+
         setCapturedImage(imageData)
         setIsScreenshotMode(false)
 

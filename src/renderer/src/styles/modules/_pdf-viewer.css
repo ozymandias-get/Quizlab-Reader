@@ -33,6 +33,7 @@
   border-radius: 1.5rem 1.5rem 0 0;
   position: relative;
   overflow: hidden;
+  height: 100%;
 }
 
 /* PDF içeriği - scroll pozisyonunu koru */
@@ -43,6 +44,7 @@
 /* React PDF Viewer Dark Theme Overrides */
 .pdf-viewer-container .rpv-core__viewer {
   background-color: #1c1917 !important;
+  height: 100% !important;
 }
 
 /* PDF sayfası yumuşak boyut geçişi */
