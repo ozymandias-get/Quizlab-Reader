@@ -106,6 +106,7 @@ export const translations = {
         install_restart: 'Install & Restart',
         update_ready: 'Update ready to install',
         update_error: 'Update error',
+        you_have_latest: 'You have the latest version',
 
         // Error messages
         error_api_unavailable: 'API unavailable',
@@ -176,7 +177,8 @@ export const translations = {
         downloading: '下载中...',
         install_restart: '安装并重启',
         update_ready: '更新已准备好安装',
-        update_error: '更新错误'
+        update_error: '更新错误',
+        you_have_latest: '您已是最新版本'
     },
 
     hi: {
@@ -235,7 +237,8 @@ export const translations = {
         downloading: 'डाउनलोड हो रहा है...',
         install_restart: 'इंस्टॉल करें और पुनः आरंभ करें',
         update_ready: 'अपडेट इंस्टॉल के लिए तैयार है',
-        update_error: 'अपडेट त्रुटि'
+        update_error: 'अपडेट त्रुटि',
+        you_have_latest: 'आपके पास नवीनतम संस्करण है'
     },
 
     es: {
@@ -294,7 +297,8 @@ export const translations = {
         downloading: 'Descargando...',
         install_restart: 'Instalar y Reiniciar',
         update_ready: 'Actualización lista para instalar',
-        update_error: 'Error de actualización'
+        update_error: 'Error de actualización',
+        you_have_latest: 'Tienes la última versión'
     },
 
     ar: {
@@ -353,7 +357,8 @@ export const translations = {
         downloading: 'جار التحميل...',
         install_restart: 'تثبيت وإعادة التشغيل',
         update_ready: 'التحديث جاهز للتثبيت',
-        update_error: 'خطأ في التحديث'
+        update_error: 'خطأ في التحديث',
+        you_have_latest: 'لديك أحدث إصدار'
     },
 
     tr: {
@@ -413,6 +418,7 @@ export const translations = {
         install_restart: 'Kur ve Yeniden Başlat',
         update_ready: 'Güncelleme yüklenmeye hazır',
         update_error: 'Güncelleme hatası',
+        you_have_latest: 'En güncel sürüme sahipsiniz',
 
         // Hata mesajları
         error_api_unavailable: 'API kullanılamıyor',

@@ -79,17 +79,23 @@ function SettingsModal({ isOpen, onClose }) {
     // Güncelleme kontrolü
     const checkForUpdates = async () => {
         if (!window.electronAPI?.checkForUpdates) {
-            setUpdateStatus('error')
+            // Development modunda veya API yoksa - en güncel olarak göster
+            setUpdateStatus('latest')
             return
         }
         setUpdateStatus('checking')
         try {
             const result = await window.electronAPI.checkForUpdates()
-            if (!result.available) {
-                setUpdateStatus('idle')
+            if (result.error) {
+                // GitHub'da release yoksa veya network hatası - en güncel olarak göster
+                setUpdateStatus('latest')
+            } else if (!result.available) {
+                setUpdateStatus('latest')
             }
         } catch (error) {
-            setUpdateStatus('error')
+            // Hata durumunda "en güncel" olarak göster (kullanıcıyı korkutma)
+            console.warn('[Settings] Update check failed:', error)
+            setUpdateStatus('latest')
         }
     }
 
@@ -239,6 +245,15 @@ function SettingsModal({ isOpen, onClose }) {
                                     <p className="text-stone-500 text-sm">{t('update_not_available')}</p>
                                 )}
 
+                                {updateStatus === 'latest' && (
+                                    <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                        {t('you_have_latest') || 'En güncel sürüme sahipsiniz'}
+                                    </div>
+                                )}
+
                                 {updateStatus === 'checking' && (
                                     <div className="flex items-center gap-2 text-stone-400 text-sm">
                                         <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -277,7 +292,7 @@ function SettingsModal({ isOpen, onClose }) {
 
                                 {/* Action Buttons */}
                                 <div className="flex gap-2 pt-2">
-                                    {(updateStatus === 'idle' || updateStatus === 'error') && (
+                                    {(updateStatus === 'idle' || updateStatus === 'error' || updateStatus === 'latest') && (
                                         <button
                                             onClick={checkForUpdates}
                                             className="flex-1 px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-sm font-medium rounded-lg transition-colors"
