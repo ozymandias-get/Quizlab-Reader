@@ -18,29 +18,35 @@ const isDev = !app.isPackaged
 // ============================================
 // SINGLE INSTANCE LOCK
 // ============================================
-// Birden fazla uygulama penceresinin açılmasını engelle
-// İkinci bir instance açılmak istendiğinde, mevcut pencereyi focus'la
-const gotTheLock = app.requestSingleInstanceLock()
+// Production: Birden fazla uygulama penceresinin açılmasını engelle
+// Development: Devre dışı - hem dev hem kurulu exe aynı anda çalışabilir
+let gotTheLock = true
 
-if (!gotTheLock) {
-    // Başka bir instance zaten çalışıyor - bu instance'ı kapat
+if (!isDev) {
+    // Production modunda single instance lock uygula
+    gotTheLock = app.requestSingleInstanceLock()
 
-    app.quit()
-} else {
-    // İkinci instance açılmaya çalışıldığında
-    app.on('second-instance', (event, commandLine, workingDirectory) => {
-
-
-        const mainWindow = BrowserWindow.getAllWindows()[0]
-        if (mainWindow) {
-            // Pencere minimize edilmişse restore et
-            if (mainWindow.isMinimized()) {
-                mainWindow.restore()
+    if (!gotTheLock) {
+        // Başka bir instance zaten çalışıyor - bu instance'ı kapat
+        app.quit()
+    } else {
+        // İkinci instance açılmaya çalışıldığında
+        app.on('second-instance', (event, commandLine, workingDirectory) => {
+            const mainWindow = BrowserWindow.getAllWindows()[0]
+            if (mainWindow) {
+                // Pencere minimize edilmişse restore et
+                if (mainWindow.isMinimized()) {
+                    mainWindow.restore()
+                }
+                // Pencereyi öne getir ve focus'la
+                mainWindow.focus()
             }
-            // Pencereyi öne getir ve focus'la
-            mainWindow.focus()
-        }
-    })
+        })
+    }
+} else {
+    // Development modunda single instance lock yok
+    // Bu sayede hem `npm run dev` hem de kurulu exe aynı anda çalışabilir
+    console.log('[Dev] Single instance lock devre dışı - paralel çalışma aktif')
 }
 
 // Güvenli PDF yollarını saklamak için Map

@@ -131,22 +131,40 @@ export function AppProvider({ children }) {
 
             // 4. Otomatik gönder aktifse, gönder butonuna tıkla
             if (autoSend && aiConfig.sendButtonSelector) {
-                // Resmin yüklenmesi için biraz bekle
-                await new Promise(resolve => setTimeout(resolve, 1000))
+                // Resmin yüklenmesi için daha uzun bekle ve retry mekanizması ekle
+                // Çoğu durumda görüntü 1500-3000ms içinde yüklenir
+                let sent = false
+                const maxRetries = 5
+                const retryDelay = 800 // Her retry arasında 800ms
 
-                await webview.executeJavaScript(`
-                    (function() {
-                        const btn = document.querySelector('${aiConfig.sendButtonSelector}');
-                        if (btn) {
-                            // Buton disabled değilse tıkla
-                            if (!btn.disabled && btn.getAttribute('aria-disabled') !== 'true') {
-                                btn.click();
-                                return true;
+                for (let i = 0; i < maxRetries && !sent; i++) {
+                    await new Promise(resolve => setTimeout(resolve, retryDelay))
+
+                    sent = await webview.executeJavaScript(`
+                        (function() {
+                            const btn = document.querySelector('${aiConfig.sendButtonSelector}');
+                            if (btn) {
+                                // Buton disabled değilse ve tıklanabilirse tıkla
+                                const isDisabled = btn.disabled || 
+                                                   btn.getAttribute('aria-disabled') === 'true' ||
+                                                   btn.classList.contains('disabled');
+                                if (!isDisabled) {
+                                    btn.click();
+                                    return true;
+                                }
                             }
-                        }
-                        return false;
-                    })()
-                `)
+                            return false;
+                        })()
+                    `)
+
+                    if (sent) {
+                        console.log('[sendImageToAI] Görüntü gönderildi, retry:', i)
+                    }
+                }
+
+                if (!sent) {
+                    console.warn('[sendImageToAI] Otomatik gönderme başarısız - buton hala disabled olabilir')
+                }
             }
 
             return true
