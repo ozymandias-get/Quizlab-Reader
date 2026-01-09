@@ -16,7 +16,7 @@ import { useLanguage } from '../context/LanguageContext'
  * - İlk render'da aktif AI'ın webview'ı hemen oluşturulur
  * - Titreme/flash yaşanmaz
  */
-function AiWebview() {
+function AiWebview({ isResizing }) {
     // Context'ten global state'e eriş
     const { currentAI, aiSites, webviewRef } = useApp()
     const { showError, showWarning } = useToast()
@@ -53,7 +53,14 @@ function AiWebview() {
                     return Promise.reject(new Error('Webview not ready'))
                 },
                 getActiveWebview: () => webviewRefs.current[currentAI],
-                getWebview: (aiId) => webviewRefs.current[aiId]
+                getWebview: (aiId) => webviewRefs.current[aiId],
+                insertText: (text) => {
+                    const activeWebview = webviewRefs.current[currentAI]
+                    if (activeWebview && activeWebview.insertText) {
+                        return activeWebview.insertText(text)
+                    }
+                    return Promise.reject(new Error('Webview insertText not supported or webview not ready'))
+                }
             }
         }
     }, [currentAI, webviewRef])
@@ -95,10 +102,42 @@ function AiWebview() {
                 }
             },
             handleNewWindow: (event) => {
-                event.preventDefault()
-                const webview = webviewRefs.current[aiId]
-                if (webview) {
-                    webview.src = event.url
+                // Akıllı Pop-up Yönetimi
+                // Varsayılan: Pop-up'lara izin ver (Google Login, Apple Sign-in vb. için)
+
+                // URL kontrolü
+                try {
+                    const targetUrl = new URL(event.url)
+                    const targetHostname = targetUrl.hostname
+
+                    // 1. Auth/Login sayfaları ise KESİNLİKLE izin ver (Electron native popup açsın)
+                    const isAuthPage =
+                        targetHostname.includes('accounts.google.com') ||
+                        targetHostname.includes('appleid.apple.com') ||
+                        targetHostname.includes('auth') ||
+                        targetHostname.includes('login') ||
+                        targetHostname.includes('signin') ||
+                        targetHostname.includes('oauth')
+
+                    if (isAuthPage || event.disposition === 'new-window') {
+                        // event.preventDefault() YAPMA - Bırak açılsın
+                        return
+                    }
+
+                    // 2. Harici bir kaynak referansı ise sistem tarayıcıda aç
+                    // (Zaten will-navigate bunu yapıyor ama new-window da yakalayabilir)
+                    const isExternal = !targetHostname.includes(siteHostname) &&
+                        !targetHostname.endsWith('.' + siteHostname) &&
+                        !siteHostname.endsWith('.' + targetHostname)
+
+                    if (isExternal) {
+                        event.preventDefault()
+                        window.electronAPI?.openExternal?.(event.url)
+                    }
+                } catch (err) {
+                    // Hata durumunda güvenli davran, popup açma
+                    event.preventDefault()
+                    console.warn('[AiWebview] New window URL parse hatası:', err)
                 }
             },
             // will-navigate: Harici linkleri sistem tarayıcısında aç
@@ -256,7 +295,9 @@ function AiWebview() {
                         style={{
                             // Aktif olmayan webview'ları CSS ile gizle (DOM'dan silme!)
                             display: isActive ? 'flex' : 'none',
-                            flexDirection: 'column'
+                            flexDirection: 'column',
+                            // Resizing sırasında pointer event'lerini kapat (Mouse trap fix)
+                            pointerEvents: isResizing ? 'none' : 'auto'
                         }}
                     >
                         <webview

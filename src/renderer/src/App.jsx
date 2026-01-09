@@ -233,19 +233,23 @@ function App() {
                         </div>
 
                         {/* Sekme İçerikleri */}
-                        <div className="flex-1 overflow-hidden">
-                            {leftPanelTab === LEFT_PANEL_TABS.EXPLORER ? (
+                        <div className="flex-1 overflow-hidden relative">
+                            {/* FileExplorer - Hep render edilir, CSS ile gizlenir */}
+                            <div className={`h-full w-full ${leftPanelTab === LEFT_PANEL_TABS.EXPLORER ? 'block' : 'hidden'}`}>
                                 <FileExplorer
                                     onFileSelect={handleFileSelect}
                                     className="h-full"
                                 />
-                            ) : (
+                            </div>
+
+                            {/* PdfViewer - Hep render edilir, CSS ile gizlenir */}
+                            <div className={`h-full w-full ${leftPanelTab === LEFT_PANEL_TABS.VIEWER ? 'block' : 'hidden'}`}>
                                 <PdfViewer
                                     pdfFile={pdfFile}
                                     onSelectPdf={handleSelectPdf}
                                     onTextSelection={handleTextSelection}
                                 />
-                            )}
+                            </div>
                         </div>
                     </div>
 
@@ -259,7 +263,7 @@ function App() {
                     <div className="glass-panel flex-1 min-w-[350px] flex flex-col overflow-hidden">
                         {/* AiWebview artık currentAI ve aiSites prop'larını almıyor */}
                         {/* Context üzerinden erişiyor */}
-                        <AiWebview />
+                        <AiWebview isResizing={isResizing} />
                     </div>
                 </div>
 

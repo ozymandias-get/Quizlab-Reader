@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useMemo } from 'react'
+import { createContext, useContext, useCallback, useMemo, useEffect } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 
 /**
@@ -27,6 +27,56 @@ export function FileProvider({ children }) {
     // localStorage ile senkronize dosya sistemi state'i
     // Başlangıçta boş liste - kullanıcı kendi klasörlerini oluşturacak
     const [fileSystem, setFileSystem] = useLocalStorage('quizlab-filesystem', [])
+
+    // Uygulama başlatıldığında dosya erişimlerini yenile (Re-hydration)
+    useEffect(() => {
+        const rehydrateFiles = async () => {
+            if (!window.electronAPI) return
+
+            // Sadece fiziksel yolu olan dosyaları filtrele
+            const filesToRehydrate = fileSystem.filter(item => item.type === 'file' && item.path)
+
+            if (filesToRehydrate.length === 0) return
+
+            let hasUpdates = false
+            const updates = new Map()
+
+            // Tüm dosyalar için yetkilendirmeyi yenile
+            await Promise.all(filesToRehydrate.map(async (file) => {
+                try {
+                    const result = await window.electronAPI.getPdfStreamUrl(file.path)
+
+                    if (result && result.streamUrl) {
+                        // Yeni streamUrl alındı
+                        // Main process her açılışta sıfırlandığı için her zaman güncelle
+                        updates.set(file.id, { streamUrl: result.streamUrl, error: false })
+                        hasUpdates = true
+                    } else {
+                        // Dosya bulunamadı veya erişim hatası
+                        updates.set(file.id, { error: true })
+                        hasUpdates = true
+                    }
+                } catch (err) {
+                    console.error('[Rehydration] Dosya yenileme hatası:', file.path, err)
+                    updates.set(file.id, { error: true })
+                    hasUpdates = true
+                }
+            }))
+
+            // Değişiklik varsa state'i güncelle
+            if (hasUpdates) {
+                setFileSystem(prev => prev.map(item => {
+                    if (updates.has(item.id)) {
+                        return { ...item, ...updates.get(item.id) }
+                    }
+                    return item
+                }))
+            }
+        }
+
+        rehydrateFiles()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // Sadece mount anında çalışsın
 
     /**
      * Yeni klasör ekleme

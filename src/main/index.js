@@ -335,12 +335,9 @@ ipcMain.handle('select-pdf', async () => {
         const pdfId = generatePdfId()
         authorizedPdfPaths.set(pdfId, filePath)
 
-        // Eski yolları temizle (bellek sızıntısını önle)
-        // Son 10 PDF'i tut, eskilerini sil
-        if (authorizedPdfPaths.size > 50) {
-            const firstKey = authorizedPdfPaths.keys().next().value
-            authorizedPdfPaths.delete(firstKey)
-        }
+        // Eski yolları temizlemeyi kaldırdık (Re-hydration ve kalıcılık için gerekli)
+        // authorizedPdfPaths.size > 50 kontrolü iptal edildi
+        // Map sadece string tuttuğu için bellek sorunu yaratmaz
 
         return {
             path: filePath,
@@ -375,11 +372,8 @@ ipcMain.handle('get-pdf-stream-url', async (event, filePath) => {
         const pdfId = generatePdfId()
         authorizedPdfPaths.set(pdfId, filePath)
 
-        // Eski yolları temizle (bellek sızıntısını önle)
-        if (authorizedPdfPaths.size > 50) {
-            const firstKey = authorizedPdfPaths.keys().next().value
-            authorizedPdfPaths.delete(firstKey)
-        }
+        // Eski yolları temizlemeyi kaldırdık (Re-hydration ve kalıcılık için gerekli)
+        // authorizedPdfPaths.size > 50 kontrolü iptal edildi
 
 
 
@@ -445,6 +439,64 @@ ipcMain.handle('open-external', async (event, url) => {
         console.error('Harici bağlantı açma hatası:', error)
         return false
     }
+})
+
+// IPC Handler: PDF Context Menu
+ipcMain.on('show-pdf-context-menu', (event) => {
+    const { Menu, MenuItem } = require('electron')
+    const win = BrowserWindow.fromWebContents(event.sender)
+
+    const menu = new Menu()
+
+    // 📄 Tam Sayfa SS (Yeni özellik - öncelikli)
+    menu.append(new MenuItem({
+        label: '📄 Tam Sayfa Görüntüsü Al',
+        accelerator: 'F',
+        click: () => {
+            win.webContents.send('trigger-screenshot', 'full-page')
+        }
+    }))
+
+    // 📸 Alan Seçerek SS
+    menu.append(new MenuItem({
+        label: '📸 Alan Seçerek Görüntü Al',
+        accelerator: 'C',
+        click: () => {
+            win.webContents.send('trigger-screenshot', 'crop')
+        }
+    }))
+
+    menu.append(new MenuItem({ type: 'separator' }))
+
+    // 🔍 Zoom kontrolleri
+    menu.append(new MenuItem({
+        label: '🔍 Yakınlaştır',
+        accelerator: 'CmdOrCtrl+Plus',
+        role: 'zoomIn'
+    }))
+
+    menu.append(new MenuItem({
+        label: '🔍 Uzaklaştır',
+        accelerator: 'CmdOrCtrl+-',
+        role: 'zoomOut'
+    }))
+
+    menu.append(new MenuItem({
+        label: '↺ Zoom Sıfırla',
+        accelerator: 'CmdOrCtrl+0',
+        role: 'resetZoom'
+    }))
+
+    menu.append(new MenuItem({ type: 'separator' }))
+
+    // 🔄 Yenile
+    menu.append(new MenuItem({
+        label: '🔄 Sayfayı Yenile',
+        accelerator: 'CmdOrCtrl+R',
+        role: 'reload'
+    }))
+
+    menu.popup({ window: win })
 })
 
 app.whenReady().then(() => {

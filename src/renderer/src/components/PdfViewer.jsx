@@ -10,7 +10,7 @@ import { scrollModePlugin } from '@react-pdf-viewer/scroll-mode'
 import { searchPlugin } from '@react-pdf-viewer/search'
 
 // PDF.js worker - local package'dan
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.js?url'
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.js'
 
 // PDF Viewer stilleri
 import '@react-pdf-viewer/core/lib/styles/index.css'
@@ -21,7 +21,7 @@ import '@react-pdf-viewer/search/lib/styles/index.css'
 function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
     const { t } = useLanguage()
     // Context'ten global state'e eriş - prop drilling yok
-    const { autoSend, toggleAutoSend, startScreenshot } = useApp()
+    const { autoSend, toggleAutoSend, startScreenshot, sendImageToAI } = useApp()
     const [pdfUrl, setPdfUrl] = useState(null)
     const [currentPage, setCurrentPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)
@@ -93,16 +93,141 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
 
     // Event listener'ı ekle/kaldır
     // pdfUrl değiştiğinde container DOM'a eklenir, o zaman listener eklenebilir
+
+    // Sağ Tık Menüsü Handleri (useEffect'ten önce tanımlanmalı)
+    const handleContextMenu = useCallback((e) => {
+        e.preventDefault()
+        window.electronAPI?.showPdfContextMenu?.()
+    }, [])
+
+    useEffect(() => {
+        const handleContextMenuGlobal = (e) => {
+            const container = containerRef.current
+            // Tıklama container içindeyse yakala
+            if (container && container.contains(e.target)) {
+                e.preventDefault()
+                e.stopPropagation() // Diğer dinleyicileri durdur
+
+                if (window.electronAPI?.showPdfContextMenu) {
+                    window.electronAPI.showPdfContextMenu()
+                } else {
+                    console.warn('[PdfViewer] Sağ tık API bulunamadı (Preload güncel değil mi?)')
+                }
+            }
+        }
+
+        // Document seviyesinde capture true ile yakala
+        document.addEventListener('contextmenu', handleContextMenuGlobal, true)
+
+        return () => {
+            document.removeEventListener('contextmenu', handleContextMenuGlobal, true)
+        }
+    }, []) // Sadece mount/unmount'ta çalışsın
+
+    // Wheel Event Listener (Ayrı useEffect)
     useEffect(() => {
         const container = containerRef.current
         if (!container) return
 
-        container.addEventListener('wheel', handleWheel, { passive: false })
+        const handleWheelEvent = (e) => handleWheel(e)
+
+        container.addEventListener('wheel', handleWheelEvent, { passive: false })
 
         return () => {
-            container.removeEventListener('wheel', handleWheel)
+            container.removeEventListener('wheel', handleWheelEvent)
         }
-    }, [handleWheel, pdfUrl]) // pdfUrl değiştiğinde container mevcut olur
+    }, [handleWheel, pdfUrl]) // pdfUrl değiştiğinde yeniden bağla
+
+    // Tam Sayfa Screenshot Alma (Canvas'tan)
+    const handleFullPageScreenshot = useCallback(async () => {
+        try {
+            console.log('[PdfViewer] Tam sayfa SS başlatıldı - Sayfa:', currentPage)
+
+            // Strateji 1: Önce page-layer container'ları al ve data-page-number ile eşleştir
+            const pageLayers = document.querySelectorAll('.rpv-core__page-layer')
+            let targetCanvas = null
+
+            // Mevcut sayfayı bul (0-indexed)
+            const pageIndex = currentPage - 1
+
+            // Page layer'ı data-page-number attribute'u ile bul
+            for (const layer of pageLayers) {
+                const pageNum = layer.getAttribute('data-page-number')
+                if (pageNum && parseInt(pageNum) === pageIndex) {
+                    targetCanvas = layer.querySelector('canvas')
+                    if (targetCanvas) {
+                        console.log('[PdfViewer] Canvas bulundu (data-page-number):', pageNum)
+                        break
+                    }
+                }
+            }
+
+            // Strateji 2: Eğer bulunamadıysa, görünür canvas'ı al
+            if (!targetCanvas) {
+                const canvasList = document.querySelectorAll('.rpv-core__page-layer canvas')
+
+                // En görünür canvas'ı bul (viewport içinde olan)
+                for (const canvas of canvasList) {
+                    const rect = canvas.getBoundingClientRect()
+                    const isVisible = rect.top < window.innerHeight && rect.bottom > 0
+
+                    if (isVisible) {
+                        targetCanvas = canvas
+                        console.log('[PdfViewer] Canvas bulundu (visibility check)')
+                        break
+                    }
+                }
+
+                // Eğer hala yoksa ilk canvas'ı al
+                if (!targetCanvas && canvasList.length > 0) {
+                    targetCanvas = canvasList[0]
+                    console.log('[PdfViewer] Canvas bulundu (fallback - ilk canvas)')
+                }
+            }
+
+            if (!targetCanvas) {
+                console.warn('[PdfViewer] Canvas bulunamadı')
+                return
+            }
+
+            // Canvas'tan yüksek kaliteli görüntü al
+            const dataUrl = targetCanvas.toDataURL('image/png', 1.0)
+            console.log('[PdfViewer] Canvas yakalandı, boyut:', targetCanvas.width, 'x', targetCanvas.height)
+
+            // AI'ya gönder
+            const success = await sendImageToAI(dataUrl)
+
+            if (success) {
+                console.log('[PdfViewer] ✅ Tam sayfa SS başarıyla gönderildi')
+            } else {
+                console.warn('[PdfViewer] ⚠️ SS gönderilemedi')
+            }
+
+        } catch (error) {
+            console.error('[PdfViewer] ❌ Full page SS hatası:', error)
+        }
+    }, [sendImageToAI, currentPage])
+
+    // Main Process'ten gelen tetikleyicileri dinle (Right Click Menu)
+    useEffect(() => {
+        if (!window.electronAPI?.onTriggerScreenshot) return
+
+        const removeListener = window.electronAPI.onTriggerScreenshot((type) => {
+            if (type === 'crop') {
+                startScreenshot()
+            } else if (type === 'full-page') {
+                handleFullPageScreenshot()
+            }
+        })
+
+        return () => {
+            if (removeListener && typeof removeListener === 'function') {
+                removeListener()
+            }
+        }
+    }, [startScreenshot, handleFullPageScreenshot])
+
+
 
     // PDF dosyası değiştiğinde URL ayarla
     // Artık Base64 dönüşümü yok - doğrudan streaming URL kullanılıyor
@@ -254,7 +379,10 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
     return (
         <div className="flex-1 flex flex-col overflow-hidden h-full min-h-0">
             {/* PDF Viewer Container */}
-            <div ref={containerRef} className="flex-1 overflow-hidden pdf-viewer-container h-full min-h-0">
+            <div
+                ref={containerRef}
+                className="flex-1 overflow-hidden pdf-viewer-container h-full min-h-0"
+            >
                 <Worker workerUrl={pdfjsWorker}>
                     <Viewer
                         fileUrl={pdfUrl}
@@ -305,6 +433,22 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="3" y="3" width="18" height="18" rx="2" />
                         <path d="M8 8h8v8H8z" strokeDasharray="2 2" />
+                    </svg>
+                </button>
+
+                {/* Tam Sayfa Görüntüsü (Yeni Buton) */}
+                <button
+                    className="btn-icon text-emerald-500"
+                    onClick={handleFullPageScreenshot}
+                    title="Tam Sayfa Görüntüsü Al"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        {/* Doküman outline */}
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="1.8"></path>
+                        <path d="M14 2v6h6" strokeWidth="1.8"></path>
+                        {/* Kamera ikonu */}
+                        <rect x="8" y="11" width="8" height="6" rx="1" strokeWidth="1.5"></rect>
+                        <circle cx="12" cy="14" r="1.5" fill="currentColor"></circle>
                     </svg>
                 </button>
 

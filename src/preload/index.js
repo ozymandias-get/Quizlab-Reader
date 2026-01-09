@@ -21,6 +21,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Harici linki sistem tarayıcısında aç
     openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
+    // PDF Sağ Tık Menüsü
+    showPdfContextMenu: () => ipcRenderer.send('show-pdf-context-menu'),
+
+    // Screenshot tetikleyicisi (Main -> Renderer)
+    onTriggerScreenshot: (callback) => {
+        ipcRenderer.on('trigger-screenshot', (event, type) => callback(type))
+        // Cleanup için return fonksiyonu (opsiyonel ama iyi pratik)
+        return () => ipcRenderer.removeAllListeners('trigger-screenshot')
+    },
+
     // Platform bilgisi
     platform: process.platform,
 

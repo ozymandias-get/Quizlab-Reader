@@ -71,11 +71,27 @@ function setupUpdaterIPC() {
 
             const result = await autoUpdater.checkForUpdates()
 
-            return {
-                available: updateAvailable,
-                version: updateInfo?.version || null,
-                releaseNotes: updateInfo?.releaseNotes || null
+            // Result doğrudan kontrol et - Event listener'lara güvenme (Race condition fix)
+            if (result && result.updateInfo) {
+                const currentVersion = app.getVersion()
+                const remoteVersion = result.updateInfo.version
+
+                // Eğer versiyonlar farklıysa güncelleme vardır
+                if (remoteVersion !== currentVersion) {
+                    updateAvailable = true
+                    updateInfo = result.updateInfo
+
+                    return {
+                        available: true,
+                        version: remoteVersion,
+                        releaseNotes: result.updateInfo.releaseNotes
+                    }
+                }
             }
+
+            // Güncelleme yok
+            updateAvailable = false
+            return { available: false }
         } catch (error) {
             console.error('[Updater] Güncelleme kontrolü hatası:', error)
             return { available: false, error: error.message }
@@ -187,14 +203,14 @@ function initUpdater() {
     // IPC handler'ları her zaman kur (dev modunda da UI çalışabilsin)
     setupUpdaterIPC()
 
-    // Development modunda güncelleme kontrolü yapma
+    // Event listener'ları her ortamda kur (Dev modunda da çalışsın)
+    setupUpdaterEvents()
+
+    // Development modunda OTOMATİK kontrol yapma (Manuel kontrol tetiklenebilir)
     if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
-        console.log('[Updater] Development mode - auto check disabled, IPC ready')
+        console.log('[Updater] Development mode - auto check skipped')
         return
     }
-
-    // Event listener'ları kur (sadece production)
-    setupUpdaterEvents()
 
     // Uygulama başladıktan 3 saniye sonra güncelleme kontrolü
     // isChecking flag sayesinde manuel kontrol ile çakışmaz

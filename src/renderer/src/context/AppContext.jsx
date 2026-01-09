@@ -36,31 +36,39 @@ export function AppProvider({ children }) {
             if (!aiConfig) return false
 
             const selector = aiConfig.inputSelector
+            // 1. Input'a focus yap
             await webview.executeJavaScript(`
                 (function() {
                     const input = document.querySelector('${selector}');
                     if (input) {
                         input.focus();
-                        if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-                            input.value = ${JSON.stringify(text)};
-                            input.dispatchEvent(new Event('input', { bubbles: true }));
-                        } else if (input.contentEditable === 'true') {
-                            input.textContent = ${JSON.stringify(text)};
-                            input.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
+                        // İçeriği temizle (opsiyonel, yeni sohbet gibi davranması için)
+                        // input.value = ''; 
                         return true;
                     }
                     return false;
                 })()
             `)
 
-            // Otomatik gönder aktifse, gönder butonuna tıkla
+            // 2. Native olarak metni yaz (Klavye simülasyonu)
+            // Bu yöntem React/Vue state'lerini %100 günceller
+            try {
+                await webview.insertText(text)
+            } catch (err) {
+                console.warn('[sendTextToAI] Native insertText başarısız, fallback deneniyor:', err)
+                // Fallback: execCommand
+                await webview.executeJavaScript(`document.execCommand('insertText', false, ${JSON.stringify(text)})`)
+            }
+
+            // 3. Otomatik gönder
             if (autoSend && aiConfig.sendButtonSelector) {
-                await new Promise(resolve => setTimeout(resolve, 100))
+                // UI state'inin güncellenmesi için kısa bir bekleme
+                await new Promise(resolve => setTimeout(resolve, 300))
+
                 await webview.executeJavaScript(`
                     (function() {
                         const btn = document.querySelector('${aiConfig.sendButtonSelector}');
-                        if (btn) {
+                        if (btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true') {
                             btn.click();
                             return true;
                         }
@@ -90,7 +98,10 @@ export function AppProvider({ children }) {
                 return false
             }
 
-            // 2. Webview'da input'a focus yap
+            // 2. Clipboard işleminin tamamlanması için bekle (Race Condition Fix)
+            await new Promise(resolve => setTimeout(resolve, 300))
+
+            // 3. Webview'da input'a focus yap
             await webview.executeJavaScript(`
                 (function() {
                     const input = document.querySelector('${aiConfig.inputSelector}');
