@@ -103,7 +103,19 @@ export const translations = {
         downloading: 'Downloading...',
         install_restart: 'Install & Restart',
         update_ready: 'Update ready to install',
-        update_error: 'Update error'
+        update_error: 'Update error',
+
+        // Error messages
+        error_api_unavailable: 'API unavailable',
+        error_permission: 'File access permission denied',
+        error_corrupt_file: 'PDF file is corrupt or invalid',
+        error_pdf_load: 'Failed to load PDF. Please try again.',
+        error_send_failed: 'Failed to send text. Make sure AI page is loaded.',
+
+        // Webview crash
+        webview_crashed_retrying: 'AI crashed, reloading...',
+        webview_crashed_max: 'Page keeps crashing. Please restart the app.',
+        webview_unresponsive: 'AI is not responding...'
     },
 
     zh: {
@@ -388,7 +400,19 @@ export const translations = {
         downloading: 'İndiriliyor...',
         install_restart: 'Kur ve Yeniden Başlat',
         update_ready: 'Güncelleme yüklenmeye hazır',
-        update_error: 'Güncelleme hatası'
+        update_error: 'Güncelleme hatası',
+
+        // Hata mesajları
+        error_api_unavailable: 'API kullanılamıyor',
+        error_permission: 'Dosya erişim izni reddedildi',
+        error_corrupt_file: 'PDF dosyası bozuk veya geçersiz',
+        error_pdf_load: 'PDF yüklenemedi. Lütfen tekrar deneyin.',
+        error_send_failed: 'Metin gönderilemedi. AI sayfasının yüklendiğinden emin olun.',
+
+        // Webview crash
+        webview_crashed_retrying: 'AI çöktü, yeniden yükleniyor...',
+        webview_crashed_max: 'Sayfa sürekli çöküyor. Lütfen uygulamayı yeniden başlatın.',
+        webview_unresponsive: 'AI yanıt vermiyor...'
     }
 }
 

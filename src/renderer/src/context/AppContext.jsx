@@ -1,0 +1,183 @@
+import React, { createContext, useContext, useRef, useMemo, useCallback } from 'react'
+import { AI_SITES, DEFAULT_AI, VALID_AI_OPTIONS } from '../constants/aiSites'
+import { STORAGE_KEYS } from '../constants/storageKeys'
+import { useLocalStorageString, useLocalStorageBoolean, useScreenshot } from '../hooks'
+
+/**
+ * AppContext - Global uygulama state'i
+ * 
+ * Prop drilling sorununu çözer:
+ * - autoSend, toggleAutoSend
+ * - currentAI, setCurrentAI  
+ * - isScreenshotMode, startScreenshot, closeScreenshot
+ * - webviewRef (AI'ya mesaj göndermek için)
+ * - sendTextToAI, sendImageToAI
+ */
+const AppContext = createContext(null)
+
+export function AppProvider({ children }) {
+    // AI Seçimi - STORAGE_KEYS sabiti kullanılıyor
+    const [currentAI, setCurrentAI] = useLocalStorageString(STORAGE_KEYS.LAST_SELECTED_AI, DEFAULT_AI, VALID_AI_OPTIONS)
+
+    // Otomatik Gönder - STORAGE_KEYS sabiti kullanılıyor
+    const [autoSend, setAutoSend, toggleAutoSend] = useLocalStorageBoolean(STORAGE_KEYS.AUTO_SEND_ENABLED, false)
+
+    // Webview ref - AI'ya mesaj göndermek için
+    const webviewRef = useRef(null)
+
+    // AI Sender fonksiyonları
+    const sendTextToAI = useCallback(async (text) => {
+        const webview = webviewRef.current
+        if (!webview || !text) return false
+
+        try {
+            // Input'a text ekle
+            const aiConfig = AI_SITES[currentAI]
+            if (!aiConfig) return false
+
+            const selector = aiConfig.inputSelector
+            await webview.executeJavaScript(`
+                (function() {
+                    const input = document.querySelector('${selector}');
+                    if (input) {
+                        input.focus();
+                        if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+                            input.value = ${JSON.stringify(text)};
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                        } else if (input.contentEditable === 'true') {
+                            input.textContent = ${JSON.stringify(text)};
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        return true;
+                    }
+                    return false;
+                })()
+            `)
+
+            // Otomatik gönder aktifse, gönder butonuna tıkla
+            if (autoSend && aiConfig.sendButtonSelector) {
+                await new Promise(resolve => setTimeout(resolve, 100))
+                await webview.executeJavaScript(`
+                    (function() {
+                        const btn = document.querySelector('${aiConfig.sendButtonSelector}');
+                        if (btn) {
+                            btn.click();
+                            return true;
+                        }
+                        return false;
+                    })()
+                `)
+            }
+            return true
+        } catch (error) {
+            console.error('Metin gönderme hatası:', error)
+            return false
+        }
+    }, [currentAI, autoSend])
+
+    const sendImageToAI = useCallback(async (imageDataUrl) => {
+        const webview = webviewRef.current
+        if (!webview || !imageDataUrl) return false
+
+        try {
+            const aiConfig = AI_SITES[currentAI]
+            if (!aiConfig) return false
+
+            // 1. Görüntüyü sistem clipboard'una kopyala (main process üzerinden)
+            const copied = await window.electronAPI?.copyImageToClipboard(imageDataUrl)
+            if (!copied) {
+                console.error('[sendImageToAI] Görüntü panoya kopyalanamadı')
+                return false
+            }
+
+            // 2. Webview'da input'a focus yap ve yapıştır
+            await webview.executeJavaScript(`
+                (function() {
+                    const input = document.querySelector('${aiConfig.inputSelector}');
+                    if (input) {
+                        input.focus();
+                        // Yapıştır komutu - bazı sitelerde çalışır
+                        document.execCommand('paste');
+                        return true;
+                    }
+                    return false;
+                })()
+            `)
+
+            // 3. Kullanıcıya Ctrl+V yapması gerektiğini bildir
+            // (bazı siteler programatik paste'i engelleyebilir)
+            console.log('[sendImageToAI] Görüntü panoya kopyalandı. Ctrl+V ile yapıştırın.')
+
+            return true
+        } catch (error) {
+            console.error('Görüntü gönderme hatası:', error)
+            return false
+        }
+    }, [currentAI])
+
+    // Screenshot işlemleri
+    const {
+        isScreenshotMode,
+        startScreenshot,
+        closeScreenshot,
+        handleCapture
+    } = useScreenshot(sendImageToAI)
+
+    // Context value'yu memoize et
+    const value = useMemo(() => ({
+        // AI Seçimi
+        currentAI,
+        setCurrentAI,
+        aiSites: AI_SITES,
+
+        // Otomatik Gönder
+        autoSend,
+        setAutoSend,
+        toggleAutoSend,
+
+        // Webview
+        webviewRef,
+
+        // AI İletişim
+        sendTextToAI,
+        sendImageToAI,
+
+        // Screenshot
+        isScreenshotMode,
+        startScreenshot,
+        closeScreenshot,
+        handleCapture
+    }), [
+        currentAI,
+        setCurrentAI,
+        autoSend,
+        setAutoSend,
+        toggleAutoSend,
+        sendTextToAI,
+        sendImageToAI,
+        isScreenshotMode,
+        startScreenshot,
+        closeScreenshot,
+        handleCapture
+    ])
+
+    return (
+        <AppContext.Provider value={value}>
+            {children}
+        </AppContext.Provider>
+    )
+}
+
+/**
+ * AppContext hook'u
+ * Provider dışında kullanılırsa hata fırlatır
+ */
+export function useApp() {
+    const context = useContext(AppContext)
+    if (!context) {
+        throw new Error('useApp must be used within an AppProvider')
+    }
+    return context
+}
+
+export default AppContext

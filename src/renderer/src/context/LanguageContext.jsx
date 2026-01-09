@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { translations, LANGUAGES, DEFAULT_LANGUAGE, VALID_LANGUAGES } from '../constants/translations'
+import { STORAGE_KEYS } from '../constants/storageKeys'
 
 const LanguageContext = createContext(null)
 
 export function LanguageProvider({ children }) {
     const [language, setLanguageState] = useState(() => {
-        const saved = localStorage.getItem('appLanguage')
+        const saved = localStorage.getItem(STORAGE_KEYS.APP_LANGUAGE)
         return saved && VALID_LANGUAGES.includes(saved) ? saved : DEFAULT_LANGUAGE
     })
 
@@ -13,7 +14,7 @@ export function LanguageProvider({ children }) {
     const setLanguage = useCallback((newLang) => {
         if (VALID_LANGUAGES.includes(newLang)) {
             setLanguageState(newLang)
-            localStorage.setItem('appLanguage', newLang)
+            localStorage.setItem(STORAGE_KEYS.APP_LANGUAGE, newLang)
 
             // RTL diller için document direction ayarla
             const langConfig = LANGUAGES[newLang]

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { useLanguage } from '../context/LanguageContext'
+import { useApp } from '../context/AppContext'
 import SettingsModal from './SettingsModal'
 
-function BottomBar({ currentAI, onAIChange, onHoverChange }) {
+function BottomBar({ onHoverChange }) {
     const [isHovered, setIsHovered] = useState(false)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const { t, currentLanguage } = useLanguage()
+    // Context'ten global state'e eriş - prop drilling yok
+    const { currentAI, setCurrentAI } = useApp()
 
     // Hover durumunu parent'a bildir
     useEffect(() => {
@@ -32,7 +35,7 @@ function BottomBar({ currentAI, onAIChange, onHoverChange }) {
                         {/* Gemini */}
                         <button
                             className={`floating-btn floating-btn--model ${currentAI === 'gemini' ? 'floating-btn--selected' : ''}`}
-                            onClick={() => onAIChange('gemini')}
+                            onClick={() => setCurrentAI('gemini')}
                             title="Gemini"
                         >
                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -44,7 +47,7 @@ function BottomBar({ currentAI, onAIChange, onHoverChange }) {
                         {/* ChatGPT */}
                         <button
                             className={`floating-btn floating-btn--model ${currentAI === 'chatgpt' ? 'floating-btn--selected' : ''}`}
-                            onClick={() => onAIChange('chatgpt')}
+                            onClick={() => setCurrentAI('chatgpt')}
                             title="ChatGPT"
                         >
                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">

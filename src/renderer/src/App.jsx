@@ -1,65 +1,77 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import PdfViewer from './components/PdfViewer'
 import AiWebview from './components/AiWebview'
 import BottomBar from './components/BottomBar'
 import FloatingButton from './components/FloatingButton'
 import ScreenshotTool from './components/ScreenshotTool'
 
-// Modüler importlar
-import { AI_SITES, DEFAULT_AI, VALID_AI_OPTIONS } from './constants/aiSites'
-import {
-    useLocalStorageString,
-    useLocalStorageBoolean,
-    usePanelResize,
-    useAISender,
-    useScreenshot
-} from './hooks'
+// Context imports
+import { useApp } from './context/AppContext'
+import { useToast } from './context/ToastContext'
+import { useLanguage } from './context/LanguageContext'
+
+// Constants
+import { STORAGE_KEYS } from './constants/storageKeys'
+
+// Hook imports
+import { usePanelResize } from './hooks'
 
 function App() {
-    // Hooks ve State
-    const [currentAI, setCurrentAI] = useLocalStorageString('lastSelectedAI', DEFAULT_AI, VALID_AI_OPTIONS)
-    const [autoSend, setAutoSend, toggleAutoSend] = useLocalStorageBoolean('autoSendEnabled', false)
+    // Toast notifications
+    const { showError, showSuccess, showWarning } = useToast()
+    const { t } = useLanguage()
 
+    // Global state context'ten
+    const {
+        sendTextToAI,
+        isScreenshotMode,
+        handleCapture,
+        closeScreenshot
+    } = useApp()
+
+    // Panel resize hook - STORAGE_KEYS sabiti kullanılıyor
     const {
         leftPanelWidth,
         isResizing,
-        handleMouseDown
+        handleMouseDown,
+        leftPanelRef
     } = usePanelResize({
         initialWidth: 50,
         minLeft: 300,
         minRight: 400,
-        storageKey: 'leftPanelWidth'
+        storageKey: STORAGE_KEYS.LEFT_PANEL_WIDTH
     })
 
-    // Local State
+    // Local State - Sadece bu bileşene özgü state'ler
     const [pdfFile, setPdfFile] = useState(null)
     const [selectedText, setSelectedText] = useState('')
     const [selectionPosition, setSelectionPosition] = useState(null)
     const [isBarHovered, setIsBarHovered] = useState(false)
-    const webviewRef = useRef(null)
 
-    // Custom Hooks
-    const { sendTextToAI, sendImageToAI } = useAISender(webviewRef, autoSend)
-    const {
-        isScreenshotMode,
-        startScreenshot,
-        closeScreenshot,
-        handleCapture
-    } = useScreenshot(sendImageToAI)
-
-    // Handlers - useCallback ile memoize edildi (child component'lerde gereksiz re-render önlenir)
+    // Handlers
     const handleSelectPdf = useCallback(async () => {
-        if (!window.electronAPI?.selectPdf) return
+        if (!window.electronAPI?.selectPdf) {
+            showError(t('error_api_unavailable') || 'API kullanılamıyor')
+            return
+        }
         try {
             const result = await window.electronAPI.selectPdf()
-            if (result) setPdfFile(result)
+            if (result) {
+                setPdfFile(result)
+            }
         } catch (error) {
             console.error('PDF seçme hatası:', error)
+            // Kullanıcıya hata mesajı göster
+            if (error.message?.includes('permission')) {
+                showError(t('error_permission') || 'Dosya erişim izni reddedildi')
+            } else if (error.message?.includes('corrupt') || error.message?.includes('invalid')) {
+                showError(t('error_corrupt_file') || 'PDF dosyası bozuk veya geçersiz')
+            } else {
+                showError(t('error_pdf_load') || 'PDF yüklenemedi. Lütfen tekrar deneyin.')
+            }
         }
-    }, [])
+    }, [showError, t])
 
-    // handleTextSelection - PdfViewer'daki useEffect dependency olarak kullanılıyor
-    // useCallback ile sararak event listener'ların gereksiz sökülüp takılmasını önle
     const handleTextSelection = useCallback((text, position) => {
         setSelectedText(text)
         setSelectionPosition(position)
@@ -71,8 +83,10 @@ function App() {
         if (success) {
             setSelectedText('')
             setSelectionPosition(null)
+        } else {
+            showWarning(t('error_send_failed') || 'Metin gönderilemedi. AI sayfasının yüklendiğinden emin olun.')
         }
-    }, [selectedText, sendTextToAI])
+    }, [selectedText, sendTextToAI, showWarning, t])
 
     return (
         <div className="h-screen w-screen overflow-hidden relative">
@@ -92,16 +106,16 @@ function App() {
             >
                 {/* Left Panel - PDF Viewer */}
                 <div
+                    ref={leftPanelRef}
                     className="glass-panel flex-shrink-0 flex flex-col overflow-hidden"
                     style={{ width: `${leftPanelWidth}%`, minWidth: '300px' }}
                 >
+                    {/* PdfViewer artık autoSend ve onAutoSendToggle prop'larını almıyor */}
+                    {/* Context üzerinden erişiyor */}
                     <PdfViewer
                         pdfFile={pdfFile}
                         onSelectPdf={handleSelectPdf}
                         onTextSelection={handleTextSelection}
-                        onScreenshot={startScreenshot}
-                        autoSend={autoSend}
-                        onAutoSendToggle={toggleAutoSend}
                     />
                 </div>
 
@@ -113,21 +127,14 @@ function App() {
 
                 {/* Right Panel - AI Webview */}
                 <div className="glass-panel flex-1 min-w-[350px] flex flex-col overflow-hidden">
-                    <AiWebview
-                        ref={webviewRef}
-                        currentAI={currentAI}
-                        aiSites={AI_SITES}
-                    />
+                    {/* AiWebview artık currentAI ve aiSites prop'larını almıyor */}
+                    {/* Context üzerinden erişiyor */}
+                    <AiWebview />
                 </div>
             </div>
 
-            {/* Bottom Bar */}
-            <BottomBar
-                currentAI={currentAI}
-                onAIChange={setCurrentAI}
-                autoSend={autoSend}
-                onHoverChange={setIsBarHovered}
-            />
+            {/* Bottom Bar - artık currentAI ve onAIChange prop'larını almıyor */}
+            <BottomBar onHoverChange={setIsBarHovered} />
 
             {/* Floating Send Button */}
             {selectedText && selectionPosition && (

@@ -1,4 +1,7 @@
-import React, { forwardRef, useState, useEffect, useImperativeHandle, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useApp } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
+import { useLanguage } from '../context/LanguageContext'
 
 /**
  * AI Webview Bileşeni
@@ -6,36 +9,57 @@ import React, { forwardRef, useState, useEffect, useImperativeHandle, useRef, us
  * Her AI platformu için ayrı webview oluşturur ve CSS ile gizler/gösterir.
  * Bu sayede kullanıcı AI'lar arasında geçiş yaptığında oturum ve sohbet geçmişi korunur.
  * 
- * @param {string} currentAI - Aktif AI platform ID'si ('chatgpt' | 'gemini')
- * @param {Object} aiSites - AI platform yapılandırmaları
+ * Context'ten global state'e erişir - prop drilling yok
+ * 
+ * FOUC ÖNLEMİ:
+ * - initializedWebviews lazy initialize edilir (currentAI ile başlar)
+ * - İlk render'da aktif AI'ın webview'ı hemen oluşturulur
+ * - Titreme/flash yaşanmaz
  */
-const AiWebview = forwardRef(({ currentAI, aiSites }, ref) => {
+function AiWebview() {
+    // Context'ten global state'e eriş
+    const { currentAI, aiSites, webviewRef } = useApp()
+    const { showError, showWarning } = useToast()
+    const { t } = useLanguage()
+
     // Her AI platformu için ayrı ref
     const webviewRefs = useRef({})
+
+    // Crash recovery için retry sayacı
+    const crashRetryCount = useRef({})
 
     // Her AI için ayrı loading ve error state'leri
     const [loadingStates, setLoadingStates] = useState({})
     const [errorStates, setErrorStates] = useState({})
 
     // Hangi webview'ların initialize edildiğini takip et (lazy loading)
-    const [initializedWebviews, setInitializedWebviews] = useState(new Set())
+    // FOUC ÖNLEMİ: currentAI ile lazy initialize et - ilk render'da doğru webview gösterilir
+    const [initializedWebviews, setInitializedWebviews] = useState(() => {
+        // İlk render'da currentAI zaten mevcut (localStorage'dan lazy init edilmiş)
+        // Hemen bu AI'ın webview'ını oluştur
+        return currentAI ? new Set([currentAI]) : new Set()
+    })
 
-    // Aktif webview'ı ref olarak expose et (executeJavaScript için)
-    useImperativeHandle(ref, () => ({
-        executeJavaScript: (script) => {
-            const activeWebview = webviewRefs.current[currentAI]
-            if (activeWebview) {
-                return activeWebview.executeJavaScript(script)
+    // Aktif webview'ı context'teki webviewRef'e bağla
+    useEffect(() => {
+        if (webviewRef) {
+            // webviewRef'e aktif webview'ın metodlarını expose et
+            webviewRef.current = {
+                executeJavaScript: (script) => {
+                    const activeWebview = webviewRefs.current[currentAI]
+                    if (activeWebview) {
+                        return activeWebview.executeJavaScript(script)
+                    }
+                    return Promise.reject(new Error('Webview not ready'))
+                },
+                getActiveWebview: () => webviewRefs.current[currentAI],
+                getWebview: (aiId) => webviewRefs.current[aiId]
             }
-            return Promise.reject(new Error('Webview not ready'))
-        },
-        // Aktif webview'ı doğrudan al
-        getActiveWebview: () => webviewRefs.current[currentAI],
-        // Belirli bir AI'ın webview'ını al
-        getWebview: (aiId) => webviewRefs.current[aiId]
-    }), [currentAI])
+        }
+    }, [currentAI, webviewRef])
 
     // currentAI değiştiğinde, o webview'ı initialize et (lazy loading)
+    // Not: İlk render'da currentAI zaten Set içinde olduğu için bu effect çalışmaz
     useEffect(() => {
         if (currentAI && !initializedWebviews.has(currentAI)) {
             setInitializedWebviews(prev => new Set([...prev, currentAI]))
@@ -111,9 +135,49 @@ const AiWebview = forwardRef(({ currentAI, aiSites }, ref) => {
                 } catch (error) {
                     console.warn('[AiWebview] will-navigate URL parse hatası:', error)
                 }
+            },
+            // Webview process çöktüğünde (bellek şişmesi, GPU hatası vb.)
+            handleCrashed: () => {
+                console.error('[AiWebview] Webview çöktü:', aiId)
+                setLoadingStates(prev => ({ ...prev, [aiId]: false }))
+
+                // Retry sayacını kontrol et
+                const retries = crashRetryCount.current[aiId] || 0
+
+                if (retries < 3) {
+                    // Otomatik reload dene
+                    crashRetryCount.current[aiId] = retries + 1
+                    showWarning(t('webview_crashed_retrying') || `${aiSites[aiId]?.displayName || 'AI'} çöktü, yeniden yükleniyor...`)
+
+                    // Kısa gecikme ile reload
+                    setTimeout(() => {
+                        const webview = webviewRefs.current[aiId]
+                        if (webview) {
+                            webview.reload()
+                        }
+                    }, 1000)
+                } else {
+                    // Çok fazla çökme - kullanıcıya hata göster
+                    setErrorStates(prev => ({
+                        ...prev,
+                        [aiId]: t('webview_crashed_max') || 'Sayfa sürekli çöküyor. Lütfen uygulamayı yeniden başlatın.'
+                    }))
+                    showError(t('webview_crashed_max') || `${aiSites[aiId]?.displayName || 'AI'} sürekli çöküyor`)
+                }
+            },
+            // Webview yanıt vermiyor (donma)
+            handleUnresponsive: () => {
+                console.warn('[AiWebview] Webview yanıt vermiyor:', aiId)
+                showWarning(t('webview_unresponsive') || `${aiSites[aiId]?.displayName || 'AI'} yanıt vermiyor...`)
+            },
+            // Webview tekrar yanıt vermeye başladı
+            handleResponsive: () => {
+                console.log('[AiWebview] Webview tekrar yanıt veriyor:', aiId)
+                // Crash retry sayacını sıfırla
+                crashRetryCount.current[aiId] = 0
             }
         }
-    }, [aiSites])
+    }, [aiSites, showError, showWarning, t])
 
     // Webview ref callback - event listener'ları bağla
     const setWebviewRef = useCallback((aiId) => (element) => {
@@ -127,6 +191,11 @@ const AiWebview = forwardRef(({ currentAI, aiSites }, ref) => {
             element.addEventListener('did-fail-load', handlers.handleFailLoad)
             element.addEventListener('new-window', handlers.handleNewWindow)
             element.addEventListener('will-navigate', handlers.handleWillNavigate)
+            // Crash recovery event'leri
+            element.addEventListener('crashed', handlers.handleCrashed)
+            element.addEventListener('render-process-gone', handlers.handleCrashed) // Electron 11+ için
+            element.addEventListener('unresponsive', handlers.handleUnresponsive)
+            element.addEventListener('responsive', handlers.handleResponsive)
 
             // Cleanup için handler'ları sakla
             element._eventHandlers = handlers
@@ -144,6 +213,11 @@ const AiWebview = forwardRef(({ currentAI, aiSites }, ref) => {
                     webview.removeEventListener('did-fail-load', handlers.handleFailLoad)
                     webview.removeEventListener('new-window', handlers.handleNewWindow)
                     webview.removeEventListener('will-navigate', handlers.handleWillNavigate)
+                    // Crash recovery event'leri
+                    webview.removeEventListener('crashed', handlers.handleCrashed)
+                    webview.removeEventListener('render-process-gone', handlers.handleCrashed)
+                    webview.removeEventListener('unresponsive', handlers.handleUnresponsive)
+                    webview.removeEventListener('responsive', handlers.handleResponsive)
                 }
             })
         }
@@ -233,8 +307,6 @@ const AiWebview = forwardRef(({ currentAI, aiSites }, ref) => {
             })}
         </>
     )
-})
-
-AiWebview.displayName = 'AiWebview'
+}
 
 export default AiWebview

@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Ekran görüntüsü alma
     captureScreen: () => ipcRenderer.invoke('capture-screen'),
 
+    // Görüntüyü sistem clipboard'una kopyala
+    copyImageToClipboard: (dataUrl) => ipcRenderer.invoke('copy-image-to-clipboard', dataUrl),
+
     // Harici linki sistem tarayıcısında aç
     openExternal: (url) => ipcRenderer.invoke('open-external', url),
 

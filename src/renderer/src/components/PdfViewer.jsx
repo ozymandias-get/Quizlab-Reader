@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useLanguage } from '../context/LanguageContext'
+import { useApp } from '../context/AppContext'
 
 // @react-pdf-viewer imports
 import { Worker, Viewer, SpecialZoomLevel, ScrollMode } from '@react-pdf-viewer/core'
@@ -17,8 +18,10 @@ import '@react-pdf-viewer/page-navigation/lib/styles/index.css'
 import '@react-pdf-viewer/zoom/lib/styles/index.css'
 import '@react-pdf-viewer/search/lib/styles/index.css'
 
-function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSend, onAutoSendToggle }) {
+function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
     const { t } = useLanguage()
+    // Context'ten global state'e eriş - prop drilling yok
+    const { autoSend, toggleAutoSend, startScreenshot } = useApp()
     const [pdfUrl, setPdfUrl] = useState(null)
     const [currentPage, setCurrentPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)
@@ -130,17 +133,44 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSe
                 const range = selection.getRangeAt(0)
                 const rect = range.getBoundingClientRect()
 
-                // Buton konumunu hesapla - seçimin üstünde ortalanmış
+                // Buton boyutları
                 const btnWidth = 140
                 const btnHeight = 44
-                let top = rect.top - btnHeight - 10
+                const margin = 10
+                const bottomBarHeight = 80 // Alt bar yüksekliği (tahmini)
+
+                // Varsayılan pozisyon: seçimin üstünde ortalanmış
+                let top = rect.top - btnHeight - margin
                 let left = rect.left + (rect.width / 2)
 
-                // Ekran sınırlarını kontrol et
-                if (top < 10) top = rect.bottom + 10
-                if (left < btnWidth / 2 + 10) left = btnWidth / 2 + 10
-                if (left > window.innerWidth - btnWidth / 2 - 10) {
-                    left = window.innerWidth - btnWidth / 2 - 10
+                // === SINIR KONTROLLERI ===
+
+                // Üst sınır: Buton ekranın üstüne çıkıyorsa, seçimin altına koy
+                if (top < margin) {
+                    top = rect.bottom + margin
+                }
+
+                // Alt sınır: Buton ekranın altına veya taskbar'a gizleniyorsa
+                // seçimin üstüne yerleştir (eğer yukarıda yer varsa)
+                if (top + btnHeight > window.innerHeight - bottomBarHeight - margin) {
+                    // Seçimin üstünde yer var mı kontrol et
+                    const topPosition = rect.top - btnHeight - margin
+                    if (topPosition >= margin) {
+                        top = topPosition
+                    } else {
+                        // Hem üstte hem altta yer yok - en iyi pozisyonu seç
+                        top = Math.max(margin, window.innerHeight - bottomBarHeight - btnHeight - margin)
+                    }
+                }
+
+                // Sol sınır: Buton ekranın soluna çıkmasın
+                if (left < btnWidth / 2 + margin) {
+                    left = btnWidth / 2 + margin
+                }
+
+                // Sağ sınır: Buton ekranın sağına çıkmasın
+                if (left > window.innerWidth - btnWidth / 2 - margin) {
+                    left = window.innerWidth - btnWidth / 2 - margin
                 }
 
                 onTextSelection?.(text, { top, left })
@@ -271,7 +301,7 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSe
                 {/* Ekran Görüntüsü */}
                 <button
                     className="btn-icon text-amber-500"
-                    onClick={onScreenshot}
+                    onClick={startScreenshot}
                     title={t('screenshot')}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -283,7 +313,7 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection, onScreenshot, autoSe
                 {/* Otomatik Gönder Toggle */}
                 <button
                     className={`btn-icon ${autoSend ? 'text-green-400' : ''}`}
-                    onClick={onAutoSendToggle}
+                    onClick={toggleAutoSend}
                     title={autoSend ? t('auto_send_on') : t('auto_send_off')}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
