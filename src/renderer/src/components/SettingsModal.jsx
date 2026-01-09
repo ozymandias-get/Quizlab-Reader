@@ -7,11 +7,10 @@ function SettingsModal({ isOpen, onClose }) {
     const [activeTab, setActiveTab] = useState('language')
     const modalRef = useRef(null)
 
-    // Update states
+    // Update states (sadeleştirilmiş - artık download/install yok)
     const [appVersion, setAppVersion] = useState('1.0.0')
-    const [updateStatus, setUpdateStatus] = useState('idle') // idle, checking, available, downloading, ready, error
+    const [updateStatus, setUpdateStatus] = useState('idle') // idle, checking, available, latest, error
     const [updateInfo, setUpdateInfo] = useState(null)
-    const [downloadProgress, setDownloadProgress] = useState(0)
 
     // Uygulama sürümünü al
     useEffect(() => {
@@ -20,34 +19,6 @@ function SettingsModal({ isOpen, onClose }) {
                 if (version) setAppVersion(version)
             })
         }
-    }, [])
-
-    // Güncelleme olaylarını dinle
-    useEffect(() => {
-        if (!window.electronAPI) return
-
-        window.electronAPI.onUpdateAvailable?.((data) => {
-            setUpdateStatus('available')
-            setUpdateInfo(data)
-        })
-
-        window.electronAPI.onUpdateNotAvailable?.((data) => {
-            setUpdateStatus('idle')
-            setUpdateInfo(null)
-        })
-
-        window.electronAPI.onDownloadProgress?.((data) => {
-            setDownloadProgress(Math.round(data.percent))
-        })
-
-        window.electronAPI.onUpdateDownloaded?.((data) => {
-            setUpdateStatus('ready')
-        })
-
-        window.electronAPI.onUpdateError?.((data) => {
-            setUpdateStatus('error')
-            console.error('Update error:', data.message)
-        })
     }, [])
 
     // ESC tuşu ile kapatma
@@ -87,30 +58,33 @@ function SettingsModal({ isOpen, onClose }) {
         try {
             const result = await window.electronAPI.checkForUpdates()
             if (result.error) {
-                // GitHub'da release yoksa veya network hatası - en güncel olarak göster
+                // GitHub'da release yoksa veya network hatası - hata göster
+                setUpdateStatus('error')
+                setUpdateInfo({ error: result.error })
+            } else if (result.available) {
+                // Güncelleme mevcut
+                setUpdateStatus('available')
+                setUpdateInfo(result)
+            } else {
+                // En güncel sürüm
                 setUpdateStatus('latest')
-            } else if (!result.available) {
-                setUpdateStatus('latest')
+                setUpdateInfo(null)
             }
         } catch (error) {
-            // Hata durumunda "en güncel" olarak göster (kullanıcıyı korkutma)
             console.warn('[Settings] Update check failed:', error)
-            setUpdateStatus('latest')
+            setUpdateStatus('error')
+            setUpdateInfo({ error: error.message })
         }
     }
 
-    // Güncelleme indir
-    const downloadUpdate = async () => {
-        if (!window.electronAPI?.downloadUpdate) return
-        setUpdateStatus('downloading')
-        setDownloadProgress(0)
-        await window.electronAPI.downloadUpdate()
-    }
-
-    // Güncellemeyi kur
-    const installUpdate = () => {
-        if (!window.electronAPI?.installUpdate) return
-        window.electronAPI.installUpdate()
+    // GitHub Releases sayfasını aç
+    const openReleasesPage = async () => {
+        if (!window.electronAPI?.openReleasesPage) {
+            // Fallback: doğrudan URL aç
+            window.open('https://github.com/ozymandias-get/Quizlab-Reader/releases', '_blank')
+            return
+        }
+        await window.electronAPI.openReleasesPage()
     }
 
     if (!isOpen) return null
@@ -265,25 +239,12 @@ function SettingsModal({ isOpen, onClose }) {
                                 )}
 
                                 {updateStatus === 'available' && updateInfo && (
-                                    <div className="text-sm">
+                                    <div className="text-sm space-y-1">
                                         <p className="text-green-400">{t('new_version')}: {updateInfo.version}</p>
+                                        {updateInfo.releaseName && (
+                                            <p className="text-stone-400 text-xs">{updateInfo.releaseName}</p>
+                                        )}
                                     </div>
-                                )}
-
-                                {updateStatus === 'downloading' && (
-                                    <div className="space-y-2">
-                                        <p className="text-stone-400 text-sm">{t('downloading')} {downloadProgress}%</p>
-                                        <div className="w-full h-2 bg-stone-700 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-indigo-500 transition-all duration-300"
-                                                style={{ width: `${downloadProgress}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {updateStatus === 'ready' && (
-                                    <p className="text-green-400 text-sm">{t('update_ready')}</p>
                                 )}
 
                                 {updateStatus === 'error' && (
@@ -303,19 +264,13 @@ function SettingsModal({ isOpen, onClose }) {
 
                                     {updateStatus === 'available' && (
                                         <button
-                                            onClick={downloadUpdate}
-                                            className="flex-1 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-300 text-sm font-medium rounded-lg transition-colors"
+                                            onClick={openReleasesPage}
+                                            className="flex-1 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-300 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                                         >
-                                            {t('download_update')}
-                                        </button>
-                                    )}
-
-                                    {updateStatus === 'ready' && (
-                                        <button
-                                            onClick={installUpdate}
-                                            className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
-                                        >
-                                            {t('install_restart')}
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                                            </svg>
+                                            {t('download_from_github') || "GitHub'dan İndir"}
                                         </button>
                                     )}
                                 </div>

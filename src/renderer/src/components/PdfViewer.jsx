@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react'
 import { useLanguage } from '../context/LanguageContext'
 import { useApp } from '../context/AppContext'
 
@@ -54,6 +54,7 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
 
     const scrollModePluginInstance = scrollModePlugin()
 
+    // Search plugin - Arama özelliği için
     const searchPluginInstance = searchPlugin()
     const { highlight, clearHighlights } = searchPluginInstance
 
@@ -94,12 +95,7 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
     // Event listener'ı ekle/kaldır
     // pdfUrl değiştiğinde container DOM'a eklenir, o zaman listener eklenebilir
 
-    // Sağ Tık Menüsü Handleri (useEffect'ten önce tanımlanmalı)
-    const handleContextMenu = useCallback((e) => {
-        e.preventDefault()
-        window.electronAPI?.showPdfContextMenu?.()
-    }, [])
-
+    // Sağ Tık Menüsü - document seviyesinde yakalanıyor
     useEffect(() => {
         const handleContextMenuGlobal = (e) => {
             const container = containerRef.current
@@ -141,9 +137,6 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
     // Tam Sayfa Screenshot Alma (Canvas'tan)
     const handleFullPageScreenshot = useCallback(async () => {
         try {
-            console.log('[PdfViewer] Tam sayfa SS başlatıldı - Sayfa:', currentPage)
-
-            // Strateji 1: Önce page-layer container'ları al ve data-page-number ile eşleştir
             const pageLayers = document.querySelectorAll('.rpv-core__page-layer')
             let targetCanvas = null
 
@@ -162,7 +155,6 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
                 }
             }
 
-            // Strateji 2: Eğer bulunamadıysa, görünür canvas'ı al
             if (!targetCanvas) {
                 const canvasList = document.querySelectorAll('.rpv-core__page-layer canvas')
 
@@ -192,13 +184,12 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
 
             // Canvas'tan yüksek kaliteli görüntü al
             const dataUrl = targetCanvas.toDataURL('image/png', 1.0)
-            console.log('[PdfViewer] Canvas yakalandı, boyut:', targetCanvas.width, 'x', targetCanvas.height)
 
             // AI'ya gönder
             const success = await sendImageToAI(dataUrl)
 
             if (success) {
-                console.log('[PdfViewer] ✅ Tam sayfa SS başarıyla gönderildi')
+                // Success
             } else {
                 console.warn('[PdfViewer] ⚠️ SS gönderilemedi')
             }
@@ -601,4 +592,6 @@ function PdfViewer({ pdfFile, onSelectPdf, onTextSelection }) {
     )
 }
 
-export default PdfViewer
+// React.memo ile sarmalama - sadece prop'lar değiştiğinde re-render
+// pdfFile, onSelectPdf veya onTextSelection değişmedikçe render olmaz
+export default memo(PdfViewer)

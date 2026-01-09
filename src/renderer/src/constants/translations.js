@@ -101,10 +101,7 @@ export const translations = {
         update_not_available: 'You have the latest version',
         new_version: 'New version',
         current_version: 'Current version',
-        download_update: 'Download Update',
-        downloading: 'Downloading...',
-        install_restart: 'Install & Restart',
-        update_ready: 'Update ready to install',
+        download_from_github: 'Download from GitHub',
         update_error: 'Update error',
         you_have_latest: 'You have the latest version',
 
@@ -113,6 +110,7 @@ export const translations = {
         error_permission: 'File access permission denied',
         error_corrupt_file: 'PDF file is corrupt or invalid',
         error_pdf_load: 'Failed to load PDF. Please try again.',
+        error_pdf_access: 'Cannot access file',
         error_send_failed: 'Failed to send text. Make sure AI page is loaded.',
 
         // Webview crash
@@ -173,12 +171,22 @@ export const translations = {
         update_not_available: '您已是最新版本',
         new_version: '新版本',
         current_version: '当前版本',
-        download_update: '下载更新',
-        downloading: '下载中...',
-        install_restart: '安装并重启',
-        update_ready: '更新已准备好安装',
+        download_from_github: '从 GitHub 下载',
         update_error: '更新错误',
-        you_have_latest: '您已是最新版本'
+        you_have_latest: '您已是最新版本',
+
+        // 错误消息
+        error_api_unavailable: 'API 不可用',
+        error_permission: '文件访问权限被拒绝',
+        error_corrupt_file: 'PDF 文件损坏或无效',
+        error_pdf_load: '无法加载 PDF。请重试。',
+        error_pdf_access: '无法访问文件',
+        error_send_failed: '发送失败。请确保 AI 页面已加载。',
+
+        // Webview 崩溃
+        webview_crashed_retrying: 'AI 崩溃，重新加载中...',
+        webview_crashed_max: '页面持续崩溃。请重启应用。',
+        webview_unresponsive: 'AI 没有响应...'
     },
 
     hi: {
@@ -233,12 +241,22 @@ export const translations = {
         update_not_available: 'आपके पास नवीनतम संस्करण है',
         new_version: 'नया संस्करण',
         current_version: 'वर्तमान संस्करण',
-        download_update: 'अपडेट डाउनलोड करें',
-        downloading: 'डाउनलोड हो रहा है...',
-        install_restart: 'इंस्टॉल करें और पुनः आरंभ करें',
-        update_ready: 'अपडेट इंस्टॉल के लिए तैयार है',
+        download_from_github: 'GitHub से डाउनलोड करें',
         update_error: 'अपडेट त्रुटि',
-        you_have_latest: 'आपके पास नवीनतम संस्करण है'
+        you_have_latest: 'आपके पास नवीनतम संस्करण है',
+
+        // त्रुटि संदेश
+        error_api_unavailable: 'API उपलब्ध नहीं है',
+        error_permission: 'फाइल ऐक्सेस अनुमति अस्वीकृत',
+        error_corrupt_file: 'PDF फाइल दूषित या अमान्य है',
+        error_pdf_load: 'PDF लोड नहीं हो सकी। कृपया पुनः प्रयास करें।',
+        error_pdf_access: 'फाइल एक्सेस नहीं हो सकी',
+        error_send_failed: 'भेजने में विफल। सुनिश्चित करें कि AI पेज लोड हो गया है।',
+
+        // Webview क्रैश
+        webview_crashed_retrying: 'AI क्रैश हो गया, पुनः लोड हो रहा है...',
+        webview_crashed_max: 'पेज बार-बार क्रैश हो रहा है। कृपया एप को पुनः आरंभ करें।',
+        webview_unresponsive: 'AI प्रतिक्रिया नहीं दे रहा...'
     },
 
     es: {
@@ -293,12 +311,22 @@ export const translations = {
         update_not_available: 'Tienes la última versión',
         new_version: 'Nueva versión',
         current_version: 'Versión actual',
-        download_update: 'Descargar Actualización',
-        downloading: 'Descargando...',
-        install_restart: 'Instalar y Reiniciar',
-        update_ready: 'Actualización lista para instalar',
+        download_from_github: 'Descargar desde GitHub',
         update_error: 'Error de actualización',
-        you_have_latest: 'Tienes la última versión'
+        you_have_latest: 'Tienes la última versión',
+
+        // Mensajes de error
+        error_api_unavailable: 'API no disponible',
+        error_permission: 'Permiso de acceso a archivo denegado',
+        error_corrupt_file: 'El archivo PDF está corrupto o es inválido',
+        error_pdf_load: 'Error al cargar PDF. Inténtalo de nuevo.',
+        error_pdf_access: 'No se puede acceder al archivo',
+        error_send_failed: 'Error al enviar. Asegúrate de que la página de AI esté cargada.',
+
+        // Webview crash
+        webview_crashed_retrying: 'AI falló, recargando...',
+        webview_crashed_max: 'La página sigue fallando. Por favor reinicia la app.',
+        webview_unresponsive: 'AI no responde...'
     },
 
     ar: {
@@ -353,12 +381,22 @@ export const translations = {
         update_not_available: 'لديك أحدث إصدار',
         new_version: 'إصدار جديد',
         current_version: 'الإصدار الحالي',
-        download_update: 'تحميل التحديث',
-        downloading: 'جار التحميل...',
-        install_restart: 'تثبيت وإعادة التشغيل',
-        update_ready: 'التحديث جاهز للتثبيت',
+        download_from_github: 'تحميل من GitHub',
         update_error: 'خطأ في التحديث',
-        you_have_latest: 'لديك أحدث إصدار'
+        you_have_latest: 'لديك أحدث إصدار',
+
+        // رسائل الخطأ
+        error_api_unavailable: 'API غير متاح',
+        error_permission: 'تم رفض إذن الوصول إلى الملف',
+        error_corrupt_file: 'ملف PDF تالف أو غير صالح',
+        error_pdf_load: 'فشل في تحميل PDF. حاول مرة أخرى.',
+        error_pdf_access: 'لا يمكن الوصول إلى الملف',
+        error_send_failed: 'فشل الإرسال. تأكد من تحميل صفحة AI.',
+
+        // Webview crash
+        webview_crashed_retrying: 'AI تعطل، جار إعادة التحميل...',
+        webview_crashed_max: 'الصفحة تستمر في التعطل. أعد تشغيل التطبيق.',
+        webview_unresponsive: 'AI لا يستجيب...'
     },
 
     tr: {
@@ -413,10 +451,7 @@ export const translations = {
         update_not_available: 'En son sürümü kullanıyorsunuz',
         new_version: 'Yeni sürüm',
         current_version: 'Mevcut sürüm',
-        download_update: 'Güncellemeyi İndir',
-        downloading: 'İndiriliyor...',
-        install_restart: 'Kur ve Yeniden Başlat',
-        update_ready: 'Güncelleme yüklenmeye hazır',
+        download_from_github: "GitHub'dan İndir",
         update_error: 'Güncelleme hatası',
         you_have_latest: 'En güncel sürüme sahipsiniz',
 
@@ -425,7 +460,8 @@ export const translations = {
         error_permission: 'Dosya erişim izni reddedildi',
         error_corrupt_file: 'PDF dosyası bozuk veya geçersiz',
         error_pdf_load: 'PDF yüklenemedi. Lütfen tekrar deneyin.',
-        error_send_failed: 'Metin gönderilemedi. AI sayfasının yüklendiğinden emin olun.',
+        error_pdf_access: 'Dosyaya erişilemiyor',
+        error_send_failed: 'Metin gönderilemedi. AI sayfasının yþklendiğinden emin olun.',
 
         // Webview crash
         webview_crashed_retrying: 'AI çöktü, yeniden yükleniyor...',

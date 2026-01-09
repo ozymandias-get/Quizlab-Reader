@@ -103,7 +103,6 @@ function ScreenshotTool({ isActive, onCapture, onClose }) {
             const ctx = canvas.getContext('2d')
 
             // Device pixel ratio hesaba kat
-            const dpr = window.devicePixelRatio || 1
             const scaleX = img.width / window.innerWidth
             const scaleY = img.height / window.innerHeight
 

@@ -64,3 +64,20 @@
   animation: slideIn 0.3s ease-out;
 }
 
+@keyframes appEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+.animate-app-enter {
+  animation: appEnter 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+

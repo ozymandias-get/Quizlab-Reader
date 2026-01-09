@@ -35,39 +35,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     platform: process.platform,
 
     // ===== UPDATER API =====
-    // Güncelleme kontrolü
+    // Güncelleme kontrolü (GitHub Releases)
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
 
-    // Güncelleme indir
-    downloadUpdate: () => ipcRenderer.invoke('download-update'),
-
-    // Güncellemeyi kur ve yeniden başlat
-    installUpdate: () => ipcRenderer.invoke('install-update'),
+    // GitHub Releases sayfasını aç
+    openReleasesPage: () => ipcRenderer.invoke('open-releases-page'),
 
     // Uygulama sürümünü al
-    getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-
-    // Güncelleme olaylarını dinle
-    onUpdateAvailable: (callback) => {
-        ipcRenderer.on('update-available', (event, data) => callback(data))
-    },
-    onUpdateNotAvailable: (callback) => {
-        ipcRenderer.on('update-not-available', (event, data) => callback(data))
-    },
-    onDownloadProgress: (callback) => {
-        ipcRenderer.on('download-progress', (event, data) => callback(data))
-    },
-    onUpdateDownloaded: (callback) => {
-        ipcRenderer.on('update-downloaded', (event, data) => callback(data))
-    },
-    onUpdateError: (callback) => {
-        ipcRenderer.on('update-error', (event, data) => callback(data))
-    }
-})
-
-// Webview için gerekli
-contextBridge.exposeInMainWorld('versions', {
-    node: () => process.versions.node,
-    chrome: () => process.versions.chrome,
-    electron: () => process.versions.electron
+    getAppVersion: () => ipcRenderer.invoke('get-app-version')
 })

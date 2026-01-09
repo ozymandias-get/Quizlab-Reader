@@ -12,6 +12,116 @@
  * 2. Özel class isimleri
  * 3. Genel element türleri (fallback)
  */
+
+/**
+ * GÜVENLİK: Domain Allowlist (Beyaz Liste)
+ * 
+ * SADECE bu listede tam eşleşen domainlere navigasyona izin verilir.
+ * includes() tabanlı zayıf kontrol yerine katı regex eşleşmesi kullanılır.
+ * 
+ * Her domain için:
+ * - Tam domain eşleşmesi (örn: "chatgpt.com")
+ * - Veya subdomain eşleşmesi (örn: "*.chatgpt.com")
+ * 
+ * YENİ BİR AI PLATFORM EKLENECEKSE:
+ * 1. AI_SITES objesine platform ekle
+ * 2. ALLOWED_DOMAINS listesine ilgili domainleri ekle
+ * 3. ALLOWED_AUTH_DOMAINS listesine gerekli auth domainlerini ekle
+ */
+
+// Ana AI platformlarının domainleri (navigasyona izin verilen)
+// NOT: Sadece dosya içinde kullanılır - dışarıya export edilmez
+const ALLOWED_DOMAINS = [
+    // ChatGPT
+    'chatgpt.com',
+    'chat.openai.com',
+    'openai.com',
+
+    // Google Gemini
+    'gemini.google.com',
+    'bard.google.com',
+    'google.com',        // Google subdomainleri için
+    'gstatic.com',       // Google static assets
+    'googleapis.com',    // Google API'ları
+]
+
+// OAuth/Login işlemleri için izin verilen auth domainleri
+// NOT: Sadece dosya içinde kullanılır - dışarıya export edilmez
+const ALLOWED_AUTH_DOMAINS = [
+    // Google Authentication
+    'accounts.google.com',
+    'accounts.youtube.com',
+
+    // Apple Sign-in
+    'appleid.apple.com',
+    'appleid.cdn-apple.com',
+
+    // Microsoft (ChatGPT Microsoft hesap desteği)
+    'login.microsoftonline.com',
+    'login.live.com',
+
+    // OpenAI Authentication
+    'auth.openai.com',
+    'auth0.openai.com',
+    'platform.openai.com',
+
+    // CloudFlare (Bot koruması için)
+    'challenges.cloudflare.com',
+]
+
+/**
+ * Verilen hostname'in izin listesinde olup olmadığını kontrol eder.
+ * Katı eşleşme kullanır - includes() gibi zayıf kontrol kullanmaz.
+ * 
+ * @param {string} hostname - Kontrol edilecek hostname (örn: "chatgpt.com")
+ * @param {string[]} allowedDomains - İzin verilen domain listesi
+ * @returns {boolean} - İzinli ise true
+ */
+const isHostnameAllowed = (hostname, allowedDomains) => {
+    if (!hostname || !allowedDomains) return false
+
+    const normalizedHostname = hostname.toLowerCase().trim()
+
+    for (const domain of allowedDomains) {
+        const normalizedDomain = domain.toLowerCase().trim()
+
+        // Tam eşleşme: "chatgpt.com" === "chatgpt.com"
+        if (normalizedHostname === normalizedDomain) {
+            return true
+        }
+
+        // Subdomain eşleşmesi: "auth.openai.com".endsWith(".openai.com")
+        // Güvenlik: Doğrudan endsWith kullanmak yerine "." prefix kontrolü yapıyoruz
+        // Bu sayede "maliciouschatgpt.com" gibi domainler geçemez
+        if (normalizedHostname.endsWith('.' + normalizedDomain)) {
+            return true
+        }
+    }
+
+    return false
+}
+
+/**
+ * Hem ana domainleri hem de auth domainlerini kontrol eder.
+ * 
+ * @param {string} hostname - Kontrol edilecek hostname
+ * @returns {boolean} - İzinli ise true
+ */
+export const isAllowedNavigation = (hostname) => {
+    return isHostnameAllowed(hostname, ALLOWED_DOMAINS) ||
+        isHostnameAllowed(hostname, ALLOWED_AUTH_DOMAINS)
+}
+
+/**
+ * Auth sayfası olup olmadığını kontrol eder.
+ * 
+ * @param {string} hostname - Kontrol edilecek hostname
+ * @returns {boolean} - Auth sayfası ise true
+ */
+export const isAuthDomain = (hostname) => {
+    return isHostnameAllowed(hostname, ALLOWED_AUTH_DOMAINS)
+}
+
 export const AI_SITES = {
     chatgpt: {
         url: 'https://chatgpt.com',
@@ -77,15 +187,3 @@ export const DEFAULT_AI = 'gemini'
  * Geçerli AI seçenekleri
  */
 export const VALID_AI_OPTIONS = Object.keys(AI_SITES)
-
-/**
- * AI sitesinin selector'larını güncelle (runtime için)
- * DOM yapısı değişirse kullanılabilir
- */
-export const updateAISiteSelectors = (aiKey, inputSelector, sendButtonSelector) => {
-    if (AI_SITES[aiKey]) {
-        if (inputSelector) AI_SITES[aiKey].inputSelector = inputSelector
-        if (sendButtonSelector) AI_SITES[aiKey].sendButtonSelector = sendButtonSelector
-        console.log(`[aiSites] ${aiKey} selector'ları güncellendi`)
-    }
-}

@@ -6,7 +6,7 @@
  * - Bu sayede 100MB PDF için 300-400MB yerine ~100MB RAM kullanılır
  * - UI thread bloklanmaz, dosya asenkron stream edilir
  */
-const { app, BrowserWindow, ipcMain, dialog, session, protocol, net, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, session, protocol, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { initUpdater } = require('./updater')
@@ -72,8 +72,15 @@ protocol.registerSchemesAsPrivileged([
  * Özel 'local-pdf' protokolünü kaydet
  * Bu protokol PDF dosyalarını streaming ile sunar
  * Güvenlik: Sadece select-pdf ile seçilen dosyalara erişim izni verilir
+ * 
+ * BACKPRESSURE YÖNETİMİ:
+ * Node.js stream.Readable.toWeb() kullanılarak backpressure otomatik yönetilir.
+ * Bu sayede renderer (PDF görüntüleyici) yavaş tüketse bile RAM'de veri birikmez.
  */
 function registerPdfProtocol() {
+    // Node.js stream modülünü import et (Readable.toWeb için)
+    const { Readable } = require('stream')
+
     protocol.handle('local-pdf', async (request) => {
         try {
             // URL format: local-pdf://ID
@@ -82,8 +89,6 @@ function registerPdfProtocol() {
             // Host'tan ID'yi al (local-pdf://pdf_123 -> host = pdf_123)
             const pdfId = url.host
 
-
-
             // Yetkilendirilmiş dosya yolunu bul
             const filePath = authorizedPdfPaths.get(pdfId)
 
@@ -91,8 +96,6 @@ function registerPdfProtocol() {
                 console.error('[PDF Protocol] Erişim reddedildi - yetkisiz ID:', pdfId)
                 return new Response('Unauthorized', { status: 403 })
             }
-
-
 
             // Dosya var mı kontrol et
             if (!fs.existsSync(filePath)) {
@@ -103,30 +106,25 @@ function registerPdfProtocol() {
             // Dosya boyutunu al
             const stats = await fs.promises.stat(filePath)
 
-
             // Dosyayı stream olarak oku - RAM'de tamamen tutmaz
-            const stream = fs.createReadStream(filePath)
-
-            // Node.js stream'i Web ReadableStream'e çevir
-            const webStream = new ReadableStream({
-                start(controller) {
-                    stream.on('data', (chunk) => {
-                        controller.enqueue(chunk)
-                    })
-                    stream.on('end', () => {
-                        controller.close()
-                    })
-                    stream.on('error', (err) => {
-                        console.error('[PDF Protocol] Stream hatası:', err)
-                        controller.error(err)
-                    })
-                },
-                cancel() {
-                    stream.destroy()
-                }
+            // highWaterMark: Her chunk'ın boyutu (64KB optimal performans için)
+            const nodeStream = fs.createReadStream(filePath, {
+                highWaterMark: 64 * 1024 // 64KB chunks
             })
 
-
+            // BACKPRESSURE YÖNETİMİ:
+            // Node.js Readable.toWeb() kullanarak otomatik backpressure sağlanır.
+            // Bu method, Web ReadableStream'in pull() mekanizmasını Node.js stream'in
+            // pause()/resume() mekanizmasına bağlar.
+            // 
+            // Renderer yavaş tüketirse:
+            // 1. Web ReadableStream controller.desiredSize <= 0 olur
+            // 2. toWeb() otomatik olarak Node.js stream'i pause() eder
+            // 3. RAM'de veri birikmez
+            // 4. Renderer hazır olunca resume() edilir
+            //
+            // Node.js 18+ gerektirir (Electron 21+ destekliyor)
+            const webStream = Readable.toWeb(nodeStream)
 
             return new Response(webStream, {
                 status: 200,
@@ -284,10 +282,7 @@ function createWindow() {
         console.error('Page failed to load:', errorCode, errorDescription)
     })
 
-    // Pencere hazır olduğunda göster
-    mainWindow.once('ready-to-show', () => {
-        mainWindow.show()
-    })
+
 
     // Pencere kapatılmadan önce durumu kaydet
     mainWindow.on('close', () => {
@@ -298,6 +293,45 @@ function createWindow() {
     session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
         details.requestHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         callback({ requestHeaders: details.requestHeaders })
+    })
+
+    return mainWindow
+}
+
+let splashWindow = null
+
+function createSplashWindow() {
+    const splashPath = isDev
+        ? path.join(__dirname, '../../src/renderer/public/splash.html')
+        : path.join(process.resourcesPath, 'dist', 'splash.html') // Production'da dist altında olacak
+
+    // Asar path düzeltmesi (Production)
+    const finalSplashPath = isDev
+        ? splashPath
+        : path.join(app.getAppPath(), 'dist', 'splash.html')
+
+    splashWindow = new BrowserWindow({
+        width: 340,
+        height: 340,
+        transparent: true,
+        frame: false,
+        alwaysOnTop: true,
+        resizable: false,
+        movable: false, // Splash taşınamaz olsun
+        center: true,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+        }
+    })
+
+    splashWindow.loadFile(finalSplashPath).catch(err => {
+        console.warn('Splash screen could not be loaded:', err)
+        // Splash yüklenemezse main window'u hemen göstereceğiz
+    })
+
+    splashWindow.on('closed', () => {
+        splashWindow = null
     })
 }
 
@@ -372,8 +406,7 @@ ipcMain.handle('get-pdf-stream-url', async (event, filePath) => {
         const pdfId = generatePdfId()
         authorizedPdfPaths.set(pdfId, filePath)
 
-        // Eski yolları temizlemeyi kaldırdık (Re-hydration ve kalıcılık için gerekli)
-        // authorizedPdfPaths.size > 50 kontrolü iptal edildi
+
 
 
 
@@ -501,13 +534,31 @@ ipcMain.on('show-pdf-context-menu', (event) => {
 
 app.whenReady().then(() => {
     // Single Instance Lock kontrolü
-    // Eğer lock alınamadıysa (ikinci instance ise) pencere açma, quit bekle
     if (!gotTheLock) return
 
     // PDF streaming protokolünü kaydet - pencere oluşturmadan önce
     registerPdfProtocol()
 
-    createWindow()
+    // 1. Splash Screen'i göster
+    createSplashWindow()
+
+    // 2. Main Window'u oluştur (ama gösterme)
+    // Biraz gecikme ekle ki splash görünsün (user experience)
+    setTimeout(() => {
+        const mainWindow = createWindow()
+
+        // 3. Main window hazır olduğunda splash'i kapat ve main'i göster
+        mainWindow.once('ready-to-show', () => {
+            // Biraz daha bekle (React hydration için)
+            setTimeout(() => {
+                if (splashWindow) {
+                    splashWindow.close()
+                }
+                mainWindow.show()
+                mainWindow.focus()
+            }, 600) // 600ms ekstra delay
+        })
+    }, 100) // Splash'in render olması için kısa bir süre tanı
 
     // Auto updater'ı başlat
     initUpdater()

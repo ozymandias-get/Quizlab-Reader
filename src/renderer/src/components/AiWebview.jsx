@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
 import { useLanguage } from '../context/LanguageContext'
+import { isAllowedNavigation, isAuthDomain } from '../constants/aiSites'
 
 /**
  * AI Webview Bileşeni
@@ -75,14 +76,8 @@ function AiWebview({ isResizing }) {
 
     // Webview event handler'ları oluştur
     const createEventHandlers = useCallback((aiId) => {
-        // AI sitesinin hostname'ini al (will-navigate kontrolü için)
-        const siteUrl = aiSites[aiId]?.url
-        let siteHostname = ''
-        try {
-            siteHostname = new URL(siteUrl).hostname
-        } catch (e) {
-            console.warn('[AiWebview] URL parse hatası:', siteUrl)
-        }
+        // NOT: Domain kontrolü artık merkezi allowlist üzerinden yapılıyor
+        // aiSites.js içindeki isAllowedNavigation ve isAuthDomain fonksiyonları kullanılıyor
 
         return {
             handleStartLoading: () => {
@@ -102,47 +97,45 @@ function AiWebview({ isResizing }) {
                 }
             },
             handleNewWindow: (event) => {
-                // Akıllı Pop-up Yönetimi
-                // Varsayılan: Pop-up'lara izin ver (Google Login, Apple Sign-in vb. için)
+                // GÜVENLİK: Katı Allowlist Tabanlı Pop-up Yönetimi
+                // Sadece izin listesindeki domainlere pop-up açılmasına izin ver
 
-                // URL kontrolü
                 try {
                     const targetUrl = new URL(event.url)
                     const targetHostname = targetUrl.hostname
 
-                    // 1. Auth/Login sayfaları ise KESİNLİKLE izin ver (Electron native popup açsın)
-                    const isAuthPage =
-                        targetHostname.includes('accounts.google.com') ||
-                        targetHostname.includes('appleid.apple.com') ||
-                        targetHostname.includes('auth') ||
-                        targetHostname.includes('login') ||
-                        targetHostname.includes('signin') ||
-                        targetHostname.includes('oauth')
-
-                    if (isAuthPage || event.disposition === 'new-window') {
+                    // 1. Auth domainleri için izin ver (popup açılsın)
+                    // isAuthDomain katı eşleşme kullanır - includes() değil!
+                    if (isAuthDomain(targetHostname)) {
                         // event.preventDefault() YAPMA - Bırak açılsın
                         return
                     }
 
-                    // 2. Harici bir kaynak referansı ise sistem tarayıcıda aç
-                    // (Zaten will-navigate bunu yapıyor ama new-window da yakalayabilir)
-                    const isExternal = !targetHostname.includes(siteHostname) &&
-                        !targetHostname.endsWith('.' + siteHostname) &&
-                        !siteHostname.endsWith('.' + targetHostname)
-
-                    if (isExternal) {
-                        event.preventDefault()
-                        window.electronAPI?.openExternal?.(event.url)
+                    // 2. İzinli domain listesinde mi kontrol et
+                    if (isAllowedNavigation(targetHostname)) {
+                        // new-window disposition ise native popup olarak aç
+                        if (event.disposition === 'new-window') {
+                            console.log('[AiWebview] İzinli domain popup:', targetHostname)
+                            return
+                        }
+                        // Diğer durumlar için mevcut webview'da aç
+                        return
                     }
+
+                    // 3. İzin listesinde OLMAYAN domain - sistem tarayıcısında aç
+                    event.preventDefault()
+                    console.warn('[AiWebview] Harici domain engellendi, sistem tarayıcısında açılıyor:', targetHostname)
+                    window.electronAPI?.openExternal?.(event.url)
+
                 } catch (err) {
                     // Hata durumunda güvenli davran, popup açma
                     event.preventDefault()
                     console.warn('[AiWebview] New window URL parse hatası:', err)
                 }
             },
-            // will-navigate: Harici linkleri sistem tarayıcısında aç
-            // Bu, kullanıcının "Help", "Terms" gibi linklere tıkladığında
-            // AI arayüzünden çıkıp sıkışmasını önler
+            // GÜVENLİK: Katı Allowlist Tabanlı Navigasyon Kontrolü
+            // will-navigate: Sadece izin listesindeki domainlere navigasyona izin ver
+            // Bu, kullanıcının zararlı linklere tıklamasını engeller
             handleWillNavigate: (event) => {
                 try {
                     const targetUrl = new URL(event.url)
@@ -153,25 +146,23 @@ function AiWebview({ isResizing }) {
                         return
                     }
 
-                    // Aynı domain ise (veya subdomain) izin ver
-                    // Örn: chatgpt.com, auth.openai.com gibi
-                    const isInternalLink =
-                        targetHostname === siteHostname ||
-                        targetHostname.endsWith('.' + siteHostname) ||
-                        siteHostname.endsWith('.' + targetHostname) ||
-                        // ChatGPT için özel: openai.com domaini
-                        (siteHostname.includes('chatgpt') && targetHostname.includes('openai')) ||
-                        (siteHostname.includes('openai') && targetHostname.includes('chatgpt')) ||
-                        // Gemini için özel: google.com subdomainleri
-                        (siteHostname.includes('google') && targetHostname.includes('google'))
+                    // GÜVENLİK: Katı allowlist kontrolü
+                    // includes() KULLANILMIYOR - sadece tam domain eşleşmesi!
+                    const isAllowed = isAllowedNavigation(targetHostname)
 
-                    if (!isInternalLink) {
-                        // Harici link - navigasyonu engelle ve sistem tarayıcısında aç
-                        event.preventDefault()
-
-                        window.electronAPI?.openExternal?.(event.url)
+                    if (isAllowed) {
+                        // İzin listesinde - navigasyona izin ver
+                        return
                     }
+
+                    // İzin listesinde DEĞİL - navigasyonu engelle ve sistem tarayıcısında aç
+                    event.preventDefault()
+                    console.warn('[AiWebview] Navigasyon engellendi, harici domain:', targetHostname)
+                    window.electronAPI?.openExternal?.(event.url)
+
                 } catch (error) {
+                    // Hata durumunda navigasyonu engelle (güvenli davranış)
+                    event.preventDefault()
                     console.warn('[AiWebview] will-navigate URL parse hatası:', error)
                 }
             },
@@ -350,4 +341,6 @@ function AiWebview({ isResizing }) {
     )
 }
 
-export default AiWebview
+// React.memo ile sarmalama - sadece isResizing prop'u değiştiğinde re-render
+// Bu, parent component (App) re-render olduğunda gereksiz render'ları önler
+export default memo(AiWebview)

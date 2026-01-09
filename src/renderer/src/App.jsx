@@ -42,7 +42,8 @@ function App() {
         leftPanelWidth,
         isResizing,
         handleMouseDown,
-        leftPanelRef
+        leftPanelRef,
+        resizerRef
     } = usePanelResize({
         initialWidth: 50,
         minLeft: 300,
@@ -145,7 +146,7 @@ function App() {
 
     return (
         <FileProvider>
-            <div className="h-screen w-screen overflow-hidden relative">
+            <div className="h-screen w-screen overflow-hidden relative animate-app-enter">
                 {/* Background Blobs */}
                 <div className="fixed inset-0 bg-stone-950 z-[-1]">
                     <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-900/20 rounded-full blur-[100px]" />
@@ -166,7 +167,6 @@ function App() {
                         className="glass-panel flex-shrink-0 flex flex-col overflow-hidden"
                         style={{ width: `${leftPanelWidth}%`, minWidth: '300px' }}
                     >
-                        {/* Sekme Başlıkları */}
                         {/* Sekme Başlıkları - Modern Segmented Control */}
                         <div className="shrink-0 p-4 pb-2">
                             <div className="flex p-1.5 bg-stone-950/60 rounded-xl border border-white/5 backdrop-blur-md shadow-inner">
@@ -255,7 +255,8 @@ function App() {
 
                     {/* Resizer */}
                     <div
-                        className={`resizer ${isResizing ? 'dragging' : ''}`}
+                        ref={resizerRef}
+                        className="resizer"
                         onMouseDown={handleMouseDown}
                     />
 
