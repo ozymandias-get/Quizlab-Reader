@@ -6,6 +6,7 @@
  * - Duplicate IPC handler koruması
  * - Race condition önleme (isChecking flag)
  * - Debounce mekanizması
+ * - Code signing devre dışı (imzasız build için)
  */
 const { autoUpdater } = require('electron-updater')
 const { app, ipcMain, BrowserWindow } = require('electron')
@@ -13,6 +14,15 @@ const { app, ipcMain, BrowserWindow } = require('electron')
 // Updater yapılandırması
 autoUpdater.autoDownload = false
 autoUpdater.autoInstallOnAppQuit = true
+autoUpdater.allowPrerelease = false
+
+// İmzasız build için doğrulamayı devre dışı bırak
+// Windows'ta code signing olmadan güncelleme için gerekli
+autoUpdater.forceDevUpdateConfig = true
+
+// Console'a detaylı log yaz
+autoUpdater.logger = console
+autoUpdater.logger.transports = { file: { level: 'info' } }
 
 // Güncelleme durumu
 let updateAvailable = false
@@ -175,9 +185,32 @@ function setupUpdaterEvents() {
 
     // Hata
     autoUpdater.on('error', (error) => {
-        console.error('[Updater] Auto updater hatası:', error)
+        console.error('[Updater] ❌ Auto updater hatası:', error)
+        console.error('[Updater] Hata detayları:', {
+            message: error.message,
+            stack: error.stack,
+            code: error.code,
+            name: error.name
+        })
+
         isChecking = false // Hata durumunda da kilidi aç
-        sendToRenderer('update-error', { message: error.message })
+
+        // Hata türüne göre daha açıklayıcı mesaj
+        let userMessage = error.message
+        if (error.message.includes('signature')) {
+            userMessage = 'İmza doğrulama hatası. İmzasız güncelleme yükleniyor...'
+        } else if (error.message.includes('sha512')) {
+            userMessage = 'Dosya bütünlük hatası. Güncelleme tekrar denenecek.'
+        } else if (error.message.includes('ENOENT')) {
+            userMessage = 'Dosya bulunamadı hatası.'
+        } else if (error.message.includes('permission')) {
+            userMessage = 'Dosya yazma izni hatası. Uygulamayı yönetici olarak çalıştırın.'
+        }
+
+        sendToRenderer('update-error', {
+            message: userMessage,
+            originalError: error.message
+        })
     })
 
     console.log('[Updater] Event listeners setup complete')

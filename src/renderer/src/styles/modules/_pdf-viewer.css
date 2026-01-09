@@ -75,8 +75,22 @@
   color: transparent !important;
 }
 
+/* Premium Text Selection - Amber/Orange tema ile uyumlu */
 .pdf-viewer-container .rpv-core__text-layer span::selection {
-  background-color: rgba(59, 130, 246, 0.4) !important;
+  background-color: rgba(251, 191, 36, 0.45) !important; /* Amber-400 */
+  color: transparent !important;
+  border-radius: 2px;
+}
+
+/* Firefox için */
+.pdf-viewer-container .rpv-core__text-layer span::-moz-selection {
+  background-color: rgba(251, 191, 36, 0.45) !important;
+  color: transparent !important;
+}
+
+/* Text layer span'ları için ek stil */
+.pdf-viewer-container .rpv-core__text-layer span {
+  transition: background-color 0.1s ease;
 }
 
 /* Toolbar button overrides */

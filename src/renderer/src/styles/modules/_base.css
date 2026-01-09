@@ -22,15 +22,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Metin seçme rengi - koyu mavi */
+/* Metin seçme rengi - Amber tema ile uyumlu */
 ::selection {
-  background-color: rgba(37, 99, 235, 0.5);
-  color: #ffffff;
+  background-color: rgba(251, 191, 36, 0.4);
+  color: #1c1917;
 }
 
 ::-moz-selection {
-  background-color: rgba(37, 99, 235, 0.5);
-  color: #ffffff;
+  background-color: rgba(251, 191, 36, 0.4);
+  color: #1c1917;
 }
 
 /* Custom Font */
