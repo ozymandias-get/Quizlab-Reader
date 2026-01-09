@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 /**
  * SSR/Test ortamı kontrolü
@@ -39,6 +39,8 @@ const setStorageItem = (key, value) => {
  * localStorage ile state senkronizasyonu sağlayan hook
  * SSR ve test ortamlarında güvenli çalışır
  * 
+ * FIX: Stale closure sorunu çözüldü - useRef ile güncel değere erişim
+ * 
  * @param {string} key - localStorage'daki anahtar
  * @param {any} initialValue - Başlangıç değeri
  * @returns {[any, Function]} - [değer, setter fonksiyonu]
@@ -57,6 +59,12 @@ export function useLocalStorage(key, initialValue) {
             return initialValue
         }
     })
+
+    // Güncel değeri ref'te tut - stale closure sorununu çözer
+    const storedValueRef = useRef(storedValue)
+    useEffect(() => {
+        storedValueRef.current = storedValue
+    }, [storedValue])
 
     // Cross-window senkronizasyon için storage event'i dinle
     useEffect(() => {
@@ -82,16 +90,26 @@ export function useLocalStorage(key, initialValue) {
     }, [key, initialValue])
 
     // Değer değiştiğinde localStorage'a kaydet
+    // FIX: Fonksiyon olarak geçirildiğinde React'in setState gibi çalışır
     const setValue = useCallback((value) => {
         try {
-            // Fonksiyon olarak gelen değeri de destekle
-            const valueToStore = value instanceof Function ? value(storedValue) : value
-            setStoredValue(valueToStore)
-            setStorageItem(key, JSON.stringify(valueToStore))
+            // Fonksiyon olarak gelen değeri destekle - EN GÜNCEL değeri kullan
+            if (value instanceof Function) {
+                // React'in fonksiyonel güncellemesini kullan - stale closure'ı önler
+                setStoredValue(prevValue => {
+                    const newValue = value(prevValue)
+                    setStorageItem(key, JSON.stringify(newValue))
+                    return newValue
+                })
+            } else {
+                // Doğrudan değer geçilmişse
+                setStoredValue(value)
+                setStorageItem(key, JSON.stringify(value))
+            }
         } catch (error) {
             console.warn(`useLocalStorage: "${key}" için değer kaydedilemedi:`, error)
         }
-    }, [key, storedValue])
+    }, [key]) // storedValue bağımlılığı kaldırıldı - artık gerekli değil
 
     return [storedValue, setValue]
 }
@@ -147,15 +165,23 @@ export function useLocalStorageString(key, initialValue, validValues = null) {
         return () => window.removeEventListener('storage', handleStorageChange)
     }, [key, initialValue, validValues])
 
+    // FIX: Stale closure düzeltmesi
     const setValue = useCallback((value) => {
         try {
-            const valueToStore = value instanceof Function ? value(storedValue) : value
-            setStoredValue(valueToStore)
-            setStorageItem(key, valueToStore)
+            if (value instanceof Function) {
+                setStoredValue(prevValue => {
+                    const newValue = value(prevValue)
+                    setStorageItem(key, newValue)
+                    return newValue
+                })
+            } else {
+                setStoredValue(value)
+                setStorageItem(key, value)
+            }
         } catch (error) {
             console.warn(`useLocalStorageString: "${key}" için değer kaydedilemedi:`, error)
         }
-    }, [key, storedValue])
+    }, [key])
 
     return [storedValue, setValue]
 }
@@ -201,15 +227,23 @@ export function useLocalStorageBoolean(key, initialValue = false) {
         return () => window.removeEventListener('storage', handleStorageChange)
     }, [key, initialValue])
 
+    // FIX: Stale closure düzeltmesi
     const setValue = useCallback((value) => {
         try {
-            const valueToStore = value instanceof Function ? value(storedValue) : value
-            setStoredValue(valueToStore)
-            setStorageItem(key, valueToStore.toString())
+            if (value instanceof Function) {
+                setStoredValue(prevValue => {
+                    const newValue = value(prevValue)
+                    setStorageItem(key, newValue.toString())
+                    return newValue
+                })
+            } else {
+                setStoredValue(value)
+                setStorageItem(key, value.toString())
+            }
         } catch (error) {
             console.warn(`useLocalStorageBoolean: "${key}" için değer kaydedilemedi:`, error)
         }
-    }, [key, storedValue])
+    }, [key])
 
     const toggle = useCallback(() => {
         setValue((prev) => !prev)

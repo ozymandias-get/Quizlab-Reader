@@ -29,16 +29,23 @@ export function FileProvider({ children }) {
     const [fileSystem, setFileSystem] = useLocalStorage('quizlab-filesystem', [])
 
     // Uygulama başlatıldığında dosya erişimlerini yenile (Re-hydration)
+    // FIX: Stale closure sorunu çözüldü - sadece başlangıçtaki dosyaları günceller
     useEffect(() => {
         const rehydrateFiles = async () => {
             if (!window.electronAPI) return
 
+            // İlk snapshot'ı al - bu an mevcut olan dosyaların ID'lerini kaydet
+            // Asenkron işlem sırasında eklenen dosyalar bu listede OLMAYACAK
+            const initialFileSystem = [...fileSystem]
+            const initialFileIds = new Set(initialFileSystem.map(item => item.id))
+
             // Sadece fiziksel yolu olan dosyaları filtrele
-            const filesToRehydrate = fileSystem.filter(item => item.type === 'file' && item.path)
+            const filesToRehydrate = initialFileSystem.filter(
+                item => item.type === 'file' && item.path
+            )
 
             if (filesToRehydrate.length === 0) return
 
-            let hasUpdates = false
             const updates = new Map()
 
             // Tüm dosyalar için yetkilendirmeyi yenile
@@ -48,29 +55,31 @@ export function FileProvider({ children }) {
 
                     if (result && result.streamUrl) {
                         // Yeni streamUrl alındı
-                        // Main process her açılışta sıfırlandığı için her zaman güncelle
                         updates.set(file.id, { streamUrl: result.streamUrl, error: false })
-                        hasUpdates = true
                     } else {
                         // Dosya bulunamadı veya erişim hatası
                         updates.set(file.id, { error: true })
-                        hasUpdates = true
                     }
                 } catch (err) {
                     console.error('[Rehydration] Dosya yenileme hatası:', file.path, err)
                     updates.set(file.id, { error: true })
-                    hasUpdates = true
                 }
             }))
 
             // Değişiklik varsa state'i güncelle
-            if (hasUpdates) {
-                setFileSystem(prev => prev.map(item => {
-                    if (updates.has(item.id)) {
-                        return { ...item, ...updates.get(item.id) }
-                    }
-                    return item
-                }))
+            // FIX: Fonksiyonel güncelleme ile EN GÜNCEL state'i kullan
+            if (updates.size > 0) {
+                setFileSystem(currentState => {
+                    // currentState şu anki EN GÜNCEL değer
+                    return currentState.map(item => {
+                        // Sadece başlangıçta var olan ve güncellenmesi gereken dosyaları güncelle
+                        // Yeni eklenen dosyalara DOKUNMA
+                        if (initialFileIds.has(item.id) && updates.has(item.id)) {
+                            return { ...item, ...updates.get(item.id) }
+                        }
+                        return item
+                    })
+                })
             }
         }
 
