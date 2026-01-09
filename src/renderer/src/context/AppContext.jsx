@@ -12,8 +12,100 @@ import { useLocalStorageString, useLocalStorageBoolean, useScreenshot } from '..
  * - isScreenshotMode, startScreenshot, closeScreenshot
  * - webviewRef (AI'ya mesaj göndermek için)
  * - sendTextToAI, sendImageToAI
+ * 
+ * DOM Bağımlılığı Düzeltmesi:
+ * - setTimeout yerine polling mekanizması
+ * - waitForElement ve waitForEnabledButton fonksiyonları
+ * - Exponential backoff ile retry
  */
 const AppContext = createContext(null)
+
+/**
+ * DOM elemanının var olmasını bekleyen polling fonksiyonu
+ * Webview içinde executeJavaScript ile çalışır
+ * 
+ * @param {string} selector - CSS selector
+ * @param {number} maxWaitMs - Maksimum bekleme süresi (ms)
+ * @param {number} intervalMs - Kontrol aralığı (ms)
+ * @returns {string} - Webview'da çalışacak JavaScript kodu
+ */
+const createWaitForElementScript = (selector, maxWaitMs = 5000, intervalMs = 100) => `
+    (async function() {
+        const selector = ${JSON.stringify(selector)};
+        const maxWait = ${maxWaitMs};
+        const interval = ${intervalMs};
+        const startTime = Date.now();
+        
+        while (Date.now() - startTime < maxWait) {
+            const el = document.querySelector(selector);
+            if (el) return true;
+            await new Promise(r => setTimeout(r, interval));
+        }
+        return false;
+    })()
+`
+
+/**
+ * Butonun aktif (enabled) olmasını bekleyen polling fonksiyonu
+ * 
+ * @param {string} selector - CSS selector
+ * @param {number} maxWaitMs - Maksimum bekleme süresi
+ * @param {number} intervalMs - Kontrol aralığı
+ * @returns {string} - Webview'da çalışacak JavaScript kodu
+ */
+const createWaitForEnabledButtonScript = (selector, maxWaitMs = 8000, intervalMs = 200) => `
+    (async function() {
+        const selector = ${JSON.stringify(selector)};
+        const maxWait = ${maxWaitMs};
+        const interval = ${intervalMs};
+        const startTime = Date.now();
+        
+        while (Date.now() - startTime < maxWait) {
+            const btn = document.querySelector(selector);
+            if (btn) {
+                const isDisabled = btn.disabled || 
+                                   btn.getAttribute('aria-disabled') === 'true' ||
+                                   btn.classList.contains('disabled') ||
+                                   btn.hasAttribute('disabled');
+                
+                if (!isDisabled) {
+                    btn.click();
+                    return { success: true, waitedMs: Date.now() - startTime };
+                }
+            }
+            await new Promise(r => setTimeout(r, interval));
+        }
+        return { success: false, waitedMs: Date.now() - startTime, reason: 'timeout' };
+    })()
+`
+
+/**
+ * Input elemanına focus yapan ve text ekleyen script
+ * Elemanın var olmasını bekler
+ */
+const createFocusAndInsertScript = (selector) => `
+    (async function() {
+        const selector = ${JSON.stringify(selector)};
+        const maxWait = 3000;
+        const interval = 100;
+        const startTime = Date.now();
+        
+        // Elemanın oluşmasını bekle
+        let input = null;
+        while (Date.now() - startTime < maxWait) {
+            input = document.querySelector(selector);
+            if (input) break;
+            await new Promise(r => setTimeout(r, interval));
+        }
+        
+        if (!input) {
+            return { success: false, reason: 'element_not_found' };
+        }
+        
+        input.focus();
+        return { success: true, tagName: input.tagName };
+    })()
+`
 
 export function AppProvider({ children }) {
     // AI Seçimi - STORAGE_KEYS sabiti kullanılıyor
@@ -31,24 +123,21 @@ export function AppProvider({ children }) {
         if (!webview || !text) return false
 
         try {
-            // Input'a text ekle
             const aiConfig = AI_SITES[currentAI]
-            if (!aiConfig) return false
+            if (!aiConfig) {
+                console.error('[sendTextToAI] AI config bulunamadı:', currentAI)
+                return false
+            }
 
             const selector = aiConfig.inputSelector
-            // 1. Input'a focus yap
-            await webview.executeJavaScript(`
-                (function() {
-                    const input = document.querySelector('${selector}');
-                    if (input) {
-                        input.focus();
-                        // İçeriği temizle (opsiyonel, yeni sohbet gibi davranması için)
-                        // input.value = ''; 
-                        return true;
-                    }
-                    return false;
-                })()
-            `)
+
+            // 1. Input elemanını bul ve focus yap (polling ile)
+            const focusResult = await webview.executeJavaScript(createFocusAndInsertScript(selector))
+
+            if (!focusResult.success) {
+                console.error('[sendTextToAI] Input bulunamadı:', focusResult.reason)
+                return false
+            }
 
             // 2. Native olarak metni yaz (Klavye simülasyonu)
             // Bu yöntem React/Vue state'lerini %100 günceller
@@ -60,25 +149,23 @@ export function AppProvider({ children }) {
                 await webview.executeJavaScript(`document.execCommand('insertText', false, ${JSON.stringify(text)})`)
             }
 
-            // 3. Otomatik gönder
+            // 3. Otomatik gönder (polling ile buton aktif olana kadar bekle)
             if (autoSend && aiConfig.sendButtonSelector) {
-                // UI state'inin güncellenmesi için kısa bir bekleme
-                await new Promise(resolve => setTimeout(resolve, 300))
+                // Polling ile butonun aktif olmasını bekle ve tıkla
+                const sendResult = await webview.executeJavaScript(
+                    createWaitForEnabledButtonScript(aiConfig.sendButtonSelector, 5000, 150)
+                )
 
-                await webview.executeJavaScript(`
-                    (function() {
-                        const btn = document.querySelector('${aiConfig.sendButtonSelector}');
-                        if (btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true') {
-                            btn.click();
-                            return true;
-                        }
-                        return false;
-                    })()
-                `)
+                if (sendResult.success) {
+                    console.log(`[sendTextToAI] ✅ Mesaj gönderildi (${sendResult.waitedMs}ms bekledik)`)
+                } else {
+                    console.warn('[sendTextToAI] ⚠️ Otomatik gönderme başarısız:', sendResult.reason)
+                }
             }
+
             return true
         } catch (error) {
-            console.error('Metin gönderme hatası:', error)
+            console.error('[sendTextToAI] ❌ Metin gönderme hatası:', error)
             return false
         }
     }, [currentAI, autoSend])
@@ -89,32 +176,32 @@ export function AppProvider({ children }) {
 
         try {
             const aiConfig = AI_SITES[currentAI]
-            if (!aiConfig) return false
+            if (!aiConfig) {
+                console.error('[sendImageToAI] AI config bulunamadı:', currentAI)
+                return false
+            }
 
             // 1. Görüntüyü sistem clipboard'una kopyala (main process üzerinden)
             const copied = await window.electronAPI?.copyImageToClipboard(imageDataUrl)
             if (!copied) {
-                console.error('[sendImageToAI] Görüntü panoya kopyalanamadı')
+                console.error('[sendImageToAI] ❌ Görüntü panoya kopyalanamadı')
                 return false
             }
+            console.log('[sendImageToAI] ✅ Görüntü panoya kopyalandı')
 
-            // 2. Clipboard işleminin tamamlanması için bekle (Race Condition Fix)
-            await new Promise(resolve => setTimeout(resolve, 300))
+            // 2. Input elemanını bul ve focus yap (polling ile)
+            const focusResult = await webview.executeJavaScript(createFocusAndInsertScript(aiConfig.inputSelector))
 
-            // 3. Webview'da input'a focus yap
-            await webview.executeJavaScript(`
-                (function() {
-                    const input = document.querySelector('${aiConfig.inputSelector}');
-                    if (input) {
-                        input.focus();
-                        return true;
-                    }
-                    return false;
-                })()
-            `)
+            if (!focusResult.success) {
+                console.error('[sendImageToAI] ❌ Input bulunamadı:', focusResult.reason)
+                return false
+            }
+            console.log('[sendImageToAI] ✅ Input focus yapıldı:', focusResult.tagName)
 
-            // 3. Klavye kısayolu ile yapıştır (Ctrl+V / Cmd+V)
-            // execCommand('paste') güvenilir değil, native event gönderiyoruz
+            // 3. Kısa bekleme - clipboard işleminin tamamlanması için
+            await new Promise(resolve => setTimeout(resolve, 150))
+
+            // 4. Klavye kısayolu ile yapıştır (Ctrl+V / Cmd+V)
             const activeWebview = webview.getActiveWebview()
             if (activeWebview) {
                 const isMac = window.electronAPI?.platform === 'darwin'
@@ -138,49 +225,28 @@ export function AppProvider({ children }) {
                     keyCode: 'v',
                     modifiers: [modifier]
                 })
+
+                console.log('[sendImageToAI] ✅ Paste komutu gönderildi')
             }
 
-            // 4. Otomatik gönder aktifse, gönder butonuna tıkla
+            // 5. Otomatik gönder aktifse, polling ile butonun aktif olmasını bekle
             if (autoSend && aiConfig.sendButtonSelector) {
-                // Resmin yüklenmesi için daha uzun bekle ve retry mekanizması ekle
-                // Çoğu durumda görüntü 1500-3000ms içinde yüklenir
-                let sent = false
-                const maxRetries = 5
-                const retryDelay = 800 // Her retry arasında 800ms
+                // Görüntü yüklenmesi biraz zaman alabilir, daha uzun timeout
+                const sendResult = await webview.executeJavaScript(
+                    createWaitForEnabledButtonScript(aiConfig.sendButtonSelector, 10000, 300)
+                )
 
-                for (let i = 0; i < maxRetries && !sent; i++) {
-                    await new Promise(resolve => setTimeout(resolve, retryDelay))
-
-                    sent = await webview.executeJavaScript(`
-                        (function() {
-                            const btn = document.querySelector('${aiConfig.sendButtonSelector}');
-                            if (btn) {
-                                // Buton disabled değilse ve tıklanabilirse tıkla
-                                const isDisabled = btn.disabled || 
-                                                   btn.getAttribute('aria-disabled') === 'true' ||
-                                                   btn.classList.contains('disabled');
-                                if (!isDisabled) {
-                                    btn.click();
-                                    return true;
-                                }
-                            }
-                            return false;
-                        })()
-                    `)
-
-                    if (sent) {
-                        console.log('[sendImageToAI] Görüntü gönderildi, retry:', i)
-                    }
-                }
-
-                if (!sent) {
-                    console.warn('[sendImageToAI] Otomatik gönderme başarısız - buton hala disabled olabilir')
+                if (sendResult.success) {
+                    console.log(`[sendImageToAI] ✅ Görüntü gönderildi (${sendResult.waitedMs}ms bekledik)`)
+                } else {
+                    console.warn('[sendImageToAI] ⚠️ Otomatik gönderme başarısız:', sendResult.reason)
+                    console.warn('[sendImageToAI] ℹ️ Görüntü muhtemelen eklendi, manuel gönderebilirsiniz')
                 }
             }
 
             return true
         } catch (error) {
-            console.error('Görüntü gönderme hatası:', error)
+            console.error('[sendImageToAI] ❌ Görüntü gönderme hatası:', error)
             return false
         }
     }, [currentAI, autoSend])

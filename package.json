@@ -1,6 +1,6 @@
 {
   "name": "quizlab-reader",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "description": "QuizLab-inspired split screen Electron app with PDF viewer and AI assistant",
   "main": "src/main/index.js",
   "repository": {
@@ -54,7 +54,7 @@
       ],
       "icon": "resources/icon.ico",
       "publisherName": "Quizlab Reader",
-      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "artifactName": "QuizlabReader-Setup-${version}.${ext}",
       "signAndEditExecutable": false,
       "forceCodeSigning": false
     },
