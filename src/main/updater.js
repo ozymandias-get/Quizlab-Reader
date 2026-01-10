@@ -71,17 +71,17 @@ function fetchLatestRelease() {
             res.on('data', chunk => { data += chunk })
             res.on('end', () => {
                 try {
-                    // 404 = Release yok (henüz publish edilmemiş)
+                    // 404 = Release yok (henüz publish edilmemiş) - bu normal durum
                     if (res.statusCode === 404) {
                         console.log('[Updater] No releases found on GitHub')
-                        resolve(null)
+                        resolve({ noReleases: true })
                         return
                     }
 
-                    // Diğer hata durumları
+                    // Rate limit (403) veya diğer hata durumları - HATA olarak işaret et
                     if (res.statusCode !== 200) {
                         console.warn(`[Updater] GitHub API error: ${res.statusCode}`)
-                        resolve(null)
+                        resolve({ error: `HTTP ${res.statusCode}` })
                         return
                     }
 
@@ -101,20 +101,20 @@ function fetchLatestRelease() {
                     })
                 } catch (error) {
                     console.error('[Updater] JSON parse error:', error)
-                    resolve(null)
+                    resolve({ error: 'Invalid response format' })
                 }
             })
         })
 
         req.on('error', (error) => {
             console.error('[Updater] Network error:', error)
-            resolve(null)
+            resolve({ error: `Network error: ${error.code || error.message}` })
         })
 
         req.setTimeout(10000, () => {
             console.warn('[Updater] Request timeout')
             req.destroy()
-            resolve(null)
+            resolve({ error: 'Request timeout' })
         })
 
         req.end()
@@ -164,9 +164,17 @@ function setupUpdaterIPC() {
             console.log('[Updater] Checking for updates...')
             const latestRelease = await fetchLatestRelease()
 
-            // Release bulunamadı
-            if (!latestRelease) {
+            // Hata durumu - kullanıcıyı bilgilendir
+            if (latestRelease?.error) {
                 updateInfo = null
+                console.warn('[Updater] Check failed:', latestRelease.error)
+                return { available: false, error: latestRelease.error }
+            }
+
+            // Release henüz yayınlanmamış (404) - bu güncel sayılır
+            if (latestRelease?.noReleases) {
+                updateInfo = null
+                console.log('[Updater] No releases published yet')
                 return { available: false }
             }
 

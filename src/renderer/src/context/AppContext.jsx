@@ -1,7 +1,41 @@
-import React, { createContext, useContext, useRef, useMemo, useCallback } from 'react'
+import React, { createContext, useContext, useRef, useMemo, useCallback, useState, useEffect } from 'react'
 import { AI_SITES, DEFAULT_AI, VALID_AI_OPTIONS } from '../constants/aiSites'
 import { STORAGE_KEYS } from '../constants/storageKeys'
 import { useLocalStorageString, useLocalStorageBoolean, useScreenshot } from '../hooks'
+
+/**
+ * GÜVENLİK: CSS Selector Validasyonu
+ * 
+ * Selector'lar şu an sabit aiSites.js'den geliyor ancak
+ * gelecekte dinamikleşirse injection saldırılarını önlemek için
+ * katı validasyon uyguluyoruz.
+ * 
+ * Tehlikeli karakterler: `, `, ${, \, newlines, backticks
+ */
+const SAFE_SELECTOR_PATTERN = /^[a-zA-Z0-9_\-\.#\[\]="'\s,*:()>+~^$|@]+$/
+
+const validateSelector = (selector) => {
+    if (!selector || typeof selector !== 'string') {
+        throw new Error('Invalid selector: must be a non-empty string')
+    }
+
+    // Maksimum uzunluk kontrolü (DoS önleme)
+    if (selector.length > 1000) {
+        throw new Error('Invalid selector: too long')
+    }
+
+    // Tehlikeli karakterleri kontrol et
+    if (!SAFE_SELECTOR_PATTERN.test(selector)) {
+        throw new Error(`Invalid selector: contains unsafe characters`)
+    }
+
+    // Template literal injection kontrolü
+    if (selector.includes('${') || selector.includes('`')) {
+        throw new Error('Invalid selector: template injection attempt')
+    }
+
+    return selector
+}
 
 /**
  * AppContext - Global uygulama state'i
@@ -29,9 +63,13 @@ const AppContext = createContext(null)
  * @param {number} intervalMs - Kontrol aralığı (ms)
  * @returns {string} - Webview'da çalışacak JavaScript kodu
  */
-const createWaitForElementScript = (selector, maxWaitMs = 5000, intervalMs = 100) => `
+const createWaitForElementScript = (selector, maxWaitMs = 5000, intervalMs = 100) => {
+    // GÜVENLİK: Selector validasyonu
+    const safeSelector = validateSelector(selector)
+
+    return `
     (async function() {
-        const selector = ${JSON.stringify(selector)};
+        const selector = ${JSON.stringify(safeSelector)};
         const maxWait = ${maxWaitMs};
         const interval = ${intervalMs};
         const startTime = Date.now();
@@ -44,6 +82,7 @@ const createWaitForElementScript = (selector, maxWaitMs = 5000, intervalMs = 100
         return false;
     })()
 `
+}
 
 /**
  * Butonun aktif (enabled) olmasını bekleyen polling fonksiyonu
@@ -53,9 +92,13 @@ const createWaitForElementScript = (selector, maxWaitMs = 5000, intervalMs = 100
  * @param {number} intervalMs - Kontrol aralığı
  * @returns {string} - Webview'da çalışacak JavaScript kodu
  */
-const createWaitForEnabledButtonScript = (selector, maxWaitMs = 8000, intervalMs = 200) => `
+const createWaitForEnabledButtonScript = (selector, maxWaitMs = 8000, intervalMs = 200) => {
+    // GÜVENLİK: Selector validasyonu
+    const safeSelector = validateSelector(selector)
+
+    return `
     (async function() {
-        const selector = ${JSON.stringify(selector)};
+        const selector = ${JSON.stringify(safeSelector)};
         const maxWait = ${maxWaitMs};
         const interval = ${intervalMs};
         const startTime = Date.now();
@@ -78,14 +121,19 @@ const createWaitForEnabledButtonScript = (selector, maxWaitMs = 8000, intervalMs
         return { success: false, waitedMs: Date.now() - startTime, reason: 'timeout' };
     })()
 `
+}
 
 /**
  * Input elemanına focus yapan ve text ekleyen script
  * Elemanın var olmasını bekler
  */
-const createFocusAndInsertScript = (selector) => `
+const createFocusAndInsertScript = (selector) => {
+    // GÜVENLİK: Selector validasyonu
+    const safeSelector = validateSelector(selector)
+
+    return `
     (async function() {
-        const selector = ${JSON.stringify(selector)};
+        const selector = ${JSON.stringify(safeSelector)};
         const maxWait = 3000;
         const interval = 100;
         const startTime = Date.now();
@@ -106,6 +154,7 @@ const createFocusAndInsertScript = (selector) => `
         return { success: true, tagName: input.tagName };
     })()
 `
+}
 
 export function AppProvider({ children }) {
     // AI Seçimi - STORAGE_KEYS sabiti kullanılıyor
@@ -114,8 +163,63 @@ export function AppProvider({ children }) {
     // Otomatik Gönder - STORAGE_KEYS sabiti kullanılıyor
     const [autoSend, setAutoSend, toggleAutoSend] = useLocalStorageBoolean(STORAGE_KEYS.AUTO_SEND_ENABLED, false)
 
+    // Güncelleme State'leri
+    const [updateAvailable, setUpdateAvailable] = useState(false)
+    const [updateInfo, setUpdateInfo] = useState(null)
+    const [isCheckingUpdate, setIsCheckingUpdate] = useState(false)
+    const [hasCheckedUpdate, setHasCheckedUpdate] = useState(false) // Kontrol yapıldı mı?
+
     // Webview ref - AI'ya mesaj göndermek için
     const webviewRef = useRef(null)
+
+    // Güncelleme kontrolü fonksiyonu
+    const checkForUpdates = useCallback(async () => {
+        if (!window.electronAPI?.checkForUpdates) {
+            console.log('[Update] Güncelleme API\'si bulunamadı (dev mode olabilir)')
+            setHasCheckedUpdate(true)
+            return { available: false }
+        }
+
+        setIsCheckingUpdate(true)
+        try {
+            const result = await window.electronAPI.checkForUpdates()
+
+            if (result.error) {
+                // Hata durumu - updateInfo'ya hata bilgisi kaydet
+                setUpdateAvailable(false)
+                setUpdateInfo({ error: result.error })
+                console.warn('[Update] Kontrol hatası:', result.error)
+            } else if (result.available) {
+                setUpdateAvailable(true)
+                setUpdateInfo(result)
+                console.log('[Update] Güncelleme mevcut:', result.version)
+            } else {
+                setUpdateAvailable(false)
+                setUpdateInfo(null)
+                console.log('[Update] Uygulama güncel')
+            }
+
+            return result
+        } catch (error) {
+            console.error('[Update] Kontrol hatası:', error)
+            setUpdateInfo({ error: error.message })
+            return { available: false, error: error.message }
+        } finally {
+            setIsCheckingUpdate(false)
+            setHasCheckedUpdate(true)
+        }
+    }, [])
+
+    // Uygulama başlangıcında güncelleme kontrolü - tek seferlik
+    // 5 saniye gecikme ile çalışır, uygulama yüklenmesini bekler
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            checkForUpdates()
+        }, 5000) // 5 saniye sonra kontrol et
+
+        return () => clearTimeout(timer)
+    }, []) // Sadece mount'ta bir kez çalışır
+
 
     // AI Sender fonksiyonları
     const sendTextToAI = useCallback(async (text) => {
@@ -165,6 +269,11 @@ export function AppProvider({ children }) {
 
             return true
         } catch (error) {
+            // Webview hazır değilse veya DOM-ready olmadan çağrıldıysa bu hatayı alırız
+            if (error.message?.includes('not ready') || error.message?.includes('dom-ready')) {
+                console.warn('[sendTextToAI] ⚠️ Webview henüz hazır değil:', error.message)
+                return { success: false, error: 'webview_not_ready' }
+            }
             console.error('[sendTextToAI] ❌ Metin gönderme hatası:', error)
             return false
         }
@@ -246,6 +355,11 @@ export function AppProvider({ children }) {
 
             return true
         } catch (error) {
+            // Webview hazır değilse veya DOM-ready olmadan çağrıldıysa bu hatayı alırız
+            if (error.message?.includes('not ready') || error.message?.includes('dom-ready')) {
+                console.warn('[sendImageToAI] ⚠️ Webview henüz hazır değil:', error.message)
+                return { success: false, error: 'webview_not_ready' }
+            }
             console.error('[sendImageToAI] ❌ Görüntü gönderme hatası:', error)
             return false
         }
@@ -282,7 +396,14 @@ export function AppProvider({ children }) {
         isScreenshotMode,
         startScreenshot,
         closeScreenshot,
-        handleCapture
+        handleCapture,
+
+        // Güncelleme
+        updateAvailable,
+        updateInfo,
+        isCheckingUpdate,
+        hasCheckedUpdate,
+        checkForUpdates
     }), [
         currentAI,
         setCurrentAI,
@@ -294,7 +415,12 @@ export function AppProvider({ children }) {
         isScreenshotMode,
         startScreenshot,
         closeScreenshot,
-        handleCapture
+        handleCapture,
+        updateAvailable,
+        updateInfo,
+        isCheckingUpdate,
+        hasCheckedUpdate,
+        checkForUpdates
     ])
 
     return (

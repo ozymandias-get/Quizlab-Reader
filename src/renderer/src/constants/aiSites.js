@@ -14,6 +14,21 @@
  */
 
 /**
+ * MERKEZİ USER-AGENT VE HEADER TANIMLARI
+ * Tüm webview ve session ayarları için tek kaynak
+ * 
+ * NOT: Bu değerler hem main process (windowManager.js) hem de
+ * renderer process (AiWebview.jsx) tarafından kullanılır
+ */
+export const CHROME_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+export const BROWSER_HEADERS = {
+    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"'
+}
+
+/**
  * GÜVENLİK: Domain Allowlist (Beyaz Liste)
  * 
  * SADECE bu listede tam eşleşen domainlere navigasyona izin verilir.
@@ -70,17 +85,37 @@ const ALLOWED_AUTH_DOMAINS = [
 ]
 
 /**
- * Verilen hostname'in izin listesinde olup olmadığını kontrol eder.
- * Katı eşleşme kullanır - includes() gibi zayıf kontrol kullanmaz.
+ * GÜVENLİK: Verilen hostname'in izin listesinde olup olmadığını kontrol eder.
+ * 
+ * KATI EŞLEŞTİRME KURALLARI:
+ * 1. Tam eşleşme: "chatgpt.com" === "chatgpt.com" ✓
+ * 2. Subdomain eşleşme: "auth.openai.com".endsWith(".openai.com") ✓
+ * 3. REDDETME: "maliciouschatgpt.com" !== "chatgpt.com" (kötü niyetli)
+ * 4. REDDETME: "chatgpt.com.evil.com" !== "chatgpt.com" (phishing)
+ * 
+ * NOT: includes() gibi zayıf kontroller KULLANILMAZ!
  * 
  * @param {string} hostname - Kontrol edilecek hostname (örn: "chatgpt.com")
  * @param {string[]} allowedDomains - İzin verilen domain listesi
  * @returns {boolean} - İzinli ise true
  */
 const isHostnameAllowed = (hostname, allowedDomains) => {
-    if (!hostname || !allowedDomains) return false
+    // Erken return - geçersiz parametreler
+    if (!hostname || typeof hostname !== 'string') return false
+    if (!allowedDomains || !Array.isArray(allowedDomains)) return false
 
     const normalizedHostname = hostname.toLowerCase().trim()
+
+    // GÜVENLİK: Boş veya çok uzun hostname'leri reddet
+    if (normalizedHostname.length === 0 || normalizedHostname.length > 253) {
+        return false
+    }
+
+    // GÜVENLİK: Sadece geçerli hostname karakterlerini kabul et
+    // a-z, 0-9, hyphen, dots - diğer her şeyi reddet
+    if (!/^[a-z0-9.-]+$/.test(normalizedHostname)) {
+        return false
+    }
 
     for (const domain of allowedDomains) {
         const normalizedDomain = domain.toLowerCase().trim()
@@ -91,7 +126,7 @@ const isHostnameAllowed = (hostname, allowedDomains) => {
         }
 
         // Subdomain eşleşmesi: "auth.openai.com".endsWith(".openai.com")
-        // Güvenlik: Doğrudan endsWith kullanmak yerine "." prefix kontrolü yapıyoruz
+        // GÜVENLİK: Doğrudan endsWith kullanmak yerine "." prefix kontrolü yapıyoruz
         // Bu sayede "maliciouschatgpt.com" gibi domainler geçemez
         if (normalizedHostname.endsWith('.' + normalizedDomain)) {
             return true

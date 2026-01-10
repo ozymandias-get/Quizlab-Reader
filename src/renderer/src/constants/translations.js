@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Dil çevirileri yapılandırması
  * Desteklenen diller: İngilizce, Çince, Hintçe, İspanyolca, Arapça, Türkçe
  */
@@ -100,6 +100,8 @@ export const translations = {
         update_available: 'Update Available!',
         update_not_available: 'You have the latest version',
         new_version: 'New version',
+        is_available: 'is available',
+        later: 'Later',
         current_version: 'Current version',
         download_from_github: 'Download from GitHub',
         update_error: 'Update error',
@@ -116,7 +118,25 @@ export const translations = {
         // Webview crash
         webview_crashed_retrying: 'AI crashed, reloading...',
         webview_crashed_max: 'Page keeps crashing. Please restart the app.',
-        webview_unresponsive: 'AI is not responding...'
+        webview_unresponsive: 'AI is not responding...',
+
+        // Data & Cookies
+        data: 'Data',
+        cookie_management: 'Session Cookies',
+        cookie_info: 'Cookies used to login to AI platforms are securely stored in this app. Cookies are kept only on your local device and are never sent to any server.',
+        secure_storage: 'Secure Storage:',
+        secure_storage_info: 'Cookies are stored in Electrons encrypted session partition.',
+        reset_cookies: 'Reset Cookies',
+        resetting: 'Resetting...',
+        cookies_reset_success: 'Cookies deleted!',
+        reset_cookies_warning: 'This action will log you out of all AI platforms. You will need to log in again.',
+
+        // Profiles
+        google_account_management: 'Google App Management',
+        accounts: 'Accounts',
+        account_profiles: 'Account Profiles',
+        create_profile: 'Create New Profile',
+        add_account: 'Add Account'
     },
 
     zh: {
@@ -170,6 +190,8 @@ export const translations = {
         update_available: '有可用更新！',
         update_not_available: '您已是最新版本',
         new_version: '新版本',
+        is_available: '可用',
+        later: '稍后',
         current_version: '当前版本',
         download_from_github: '从 GitHub 下载',
         update_error: '更新错误',
@@ -186,7 +208,13 @@ export const translations = {
         // Webview 崩溃
         webview_crashed_retrying: 'AI 崩溃，重新加载中...',
         webview_crashed_max: '页面持续崩溃。请重启应用。',
-        webview_unresponsive: 'AI 没有响应...'
+        webview_unresponsive: 'AI 没有响应...',
+
+        google_account_management: 'Google 应用管理',
+        accounts: '账户',
+        account_profiles: '账户配置文件',
+        create_profile: '创建新配置文件',
+        add_account: '添加账户'
     },
 
     hi: {
@@ -240,6 +268,8 @@ export const translations = {
         update_available: 'अपडेट उपलब्ध है!',
         update_not_available: 'आपके पास नवीनतम संस्करण है',
         new_version: 'नया संस्करण',
+        is_available: 'उपलब्ध है',
+        later: 'बाद में',
         current_version: 'वर्तमान संस्करण',
         download_from_github: 'GitHub से डाउनलोड करें',
         update_error: 'अपडेट त्रुटि',
@@ -256,7 +286,13 @@ export const translations = {
         // Webview क्रैश
         webview_crashed_retrying: 'AI क्रैश हो गया, पुनः लोड हो रहा है...',
         webview_crashed_max: 'पेज बार-बार क्रैश हो रहा है। कृपया एप को पुनः आरंभ करें।',
-        webview_unresponsive: 'AI प्रतिक्रिया नहीं दे रहा...'
+        webview_unresponsive: 'AI प्रतिक्रिया नहीं दे रहा...',
+
+        google_account_management: 'Google ऐप प्रबंधन',
+        accounts: 'खाते',
+        account_profiles: 'खाता प्रोफ़ाइल',
+        create_profile: 'नई प्रोफ़ाइल बनाएं',
+        add_account: 'खाता जोड़ें'
     },
 
     es: {
@@ -310,6 +346,8 @@ export const translations = {
         update_available: '¡Actualización Disponible!',
         update_not_available: 'Tienes la última versión',
         new_version: 'Nueva versión',
+        is_available: 'está disponible',
+        later: 'Más tarde',
         current_version: 'Versión actual',
         download_from_github: 'Descargar desde GitHub',
         update_error: 'Error de actualización',
@@ -326,7 +364,13 @@ export const translations = {
         // Webview crash
         webview_crashed_retrying: 'AI falló, recargando...',
         webview_crashed_max: 'La página sigue fallando. Por favor reinicia la app.',
-        webview_unresponsive: 'AI no responde...'
+        webview_unresponsive: 'AI no responde...',
+
+        google_account_management: 'Gestión de aplicaciones de Google',
+        accounts: 'Cuentas',
+        account_profiles: 'Perfiles de cuenta',
+        create_profile: 'Crear nuevo perfil',
+        add_account: 'Añadir cuenta'
     },
 
     ar: {
@@ -380,6 +424,8 @@ export const translations = {
         update_available: 'يتوفر تحديث!',
         update_not_available: 'لديك أحدث إصدار',
         new_version: 'إصدار جديد',
+        is_available: 'متاح',
+        later: 'لاحقاً',
         current_version: 'الإصدار الحالي',
         download_from_github: 'تحميل من GitHub',
         update_error: 'خطأ في التحديث',
@@ -396,7 +442,13 @@ export const translations = {
         // Webview crash
         webview_crashed_retrying: 'AI تعطل، جار إعادة التحميل...',
         webview_crashed_max: 'الصفحة تستمر في التعطل. أعد تشغيل التطبيق.',
-        webview_unresponsive: 'AI لا يستجيب...'
+        webview_unresponsive: 'AI لا يستجيب...',
+
+        google_account_management: 'إدارة تطبيقات جوجل',
+        accounts: 'حسابات',
+        account_profiles: 'ملفات تعريف الحساب',
+        create_profile: 'إنشاء ملف تعريف جديد',
+        add_account: 'إضافة حساب'
     },
 
     tr: {
@@ -450,6 +502,8 @@ export const translations = {
         update_available: 'Güncelleme Mevcut!',
         update_not_available: 'En son sürümü kullanıyorsunuz',
         new_version: 'Yeni sürüm',
+        is_available: 'indirebilirsiniz',
+        later: 'Sonra',
         current_version: 'Mevcut sürüm',
         download_from_github: "GitHub'dan İndir",
         update_error: 'Güncelleme hatası',
@@ -461,12 +515,29 @@ export const translations = {
         error_corrupt_file: 'PDF dosyası bozuk veya geçersiz',
         error_pdf_load: 'PDF yüklenemedi. Lütfen tekrar deneyin.',
         error_pdf_access: 'Dosyaya erişilemiyor',
-        error_send_failed: 'Metin gönderilemedi. AI sayfasının yþklendiğinden emin olun.',
+        error_send_failed: 'Metin gönderilemedi. AI sayfasının yüklendiğinden emin olun.',
 
         // Webview crash
         webview_crashed_retrying: 'AI çöktü, yeniden yükleniyor...',
         webview_crashed_max: 'Sayfa sürekli çöküyor. Lütfen uygulamayı yeniden başlatın.',
-        webview_unresponsive: 'AI yanıt vermiyor...'
+        webview_unresponsive: 'AI yanıt vermiyor...',
+
+        // Veri & Cookie'ler
+        data: 'Veri',
+        cookie_management: 'Oturum Cookie\'leri',
+        cookie_info: 'AI platformlarına giriş yapmak için kullandığınız cookie\'ler bu uygulamada güvenli şekilde saklanır. Cookie\'ler sadece yerel cihazınızda tutulur ve hiçbir sunucuya gönderilmez.',
+        secure_storage: 'Güvenli Depolama:',
+        secure_storage_info: 'Cookie\'ler Electron\'un şifreli session partitionunda saklanır.',
+        reset_cookies: 'Cookie\'leri Sıfırla',
+        resetting: 'Sıfırlanıyor...',
+        cookies_reset_success: "Cookie'ler silindi!",
+        reset_cookies_warning: 'Bu işlem tüm AI platformlarındaki oturumlarınızı kapatır. Tekrar giriş yapmanız gerekecektir.',
+
+        google_account_management: 'Google Uygulama Yönetimi',
+        accounts: 'Hesaplar',
+        account_profiles: 'Hesap Profilleri',
+        create_profile: 'Yeni Profil Oluştur',
+        add_account: 'Hesap Ekle'
     }
 }
 

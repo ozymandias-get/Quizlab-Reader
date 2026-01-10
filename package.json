@@ -1,6 +1,6 @@
 {
   "name": "quizlab-reader",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "QuizLab-inspired split screen Electron app with PDF viewer and AI assistant",
   "main": "src/main/index.js",
   "repository": {
@@ -16,7 +16,8 @@
     "build:mac": "vite build && electron-builder --mac",
     "build:linux": "vite build && electron-builder --linux",
     "preview": "vite preview",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage"
   },

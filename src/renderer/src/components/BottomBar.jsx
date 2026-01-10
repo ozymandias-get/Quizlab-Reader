@@ -1,27 +1,164 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '../context/LanguageContext'
 import { useApp } from '../context/AppContext'
+import { useSettings } from '../hooks/useSettings'
 import SettingsModal from './SettingsModal'
 
 function BottomBar({ onHoverChange }) {
     const [isHovered, setIsHovered] = useState(false)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+    const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
     const { t, currentLanguage } = useLanguage()
     // Context'ten global state'e eriş - prop drilling yok
     const { currentAI, setCurrentAI } = useApp()
+
+    // Profilleri çek
+    const { profiles, activeProfileId, handleSwitchProfile } = useSettings(true)
+
+    // Timeout refs for delayed closing
+    const closeTimeoutRef = useRef(null)
 
     // Hover durumunu parent'a bildir
     useEffect(() => {
         onHoverChange?.(isHovered)
     }, [isHovered, onHoverChange])
 
+    const handleMouseEnter = () => {
+        if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current)
+            closeTimeoutRef.current = null
+        }
+        setIsHovered(true)
+    }
+
+    const handleMouseLeave = () => {
+        setIsHovered(false)
+        // Delay closing to allow traversing gaps
+        closeTimeoutRef.current = setTimeout(() => {
+            setIsProfileMenuOpen(false)
+        }, 250)
+    }
+
+    // Menü dışına tıklanınca kapat
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isProfileMenuOpen && !event.target.closest('.profile-menu-container')) {
+                setIsProfileMenuOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [isProfileMenuOpen])
+
+    const activeProfile = profiles.find(p => p.id === activeProfileId)
+
+    const handleGeminiClick = () => {
+        if (currentAI === 'gemini') {
+            setIsProfileMenuOpen(!isProfileMenuOpen)
+        } else {
+            setCurrentAI('gemini')
+            setIsProfileMenuOpen(false)
+        }
+    }
+
+    const handleProfileSelect = async (profileId) => {
+        await handleSwitchProfile(profileId)
+        setIsProfileMenuOpen(false)
+    }
+
     return (
         <>
             <div
-                className="fixed bottom-2 left-1/2 -translate-x-1/2 z-50"
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
+                className="fixed bottom-2 left-1/2 -translate-x-1/2 z-50 profile-menu-container"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
             >
+                {/* Profil Menüsü - Integrated Premium Dropdown */}
+                {isProfileMenuOpen && (
+                    <div
+                        className="absolute bottom-full left-0 mb-3 w-56 overflow-hidden origin-bottom-left"
+                        style={{
+                            background: 'rgba(5, 5, 7, 0.85)',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            borderRadius: '20px',
+                            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.9), 0 0 15px -3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
+                            backdropFilter: 'blur(30px) saturate(140%)',
+                            padding: '6px',
+                            animation: 'menuSpring 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                        }}
+                    >
+                        <div className="space-y-1">
+                            {profiles.length > 0 ? profiles.map(profile => (
+                                <button
+                                    key={profile.id}
+                                    onClick={() => handleProfileSelect(profile.id)}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group text-left relative"
+                                    style={{
+                                        background: activeProfileId === profile.id ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (activeProfileId !== profile.id) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (activeProfileId !== profile.id) e.currentTarget.style.background = 'transparent'
+                                    }}
+                                >
+                                    {/* Avatar */}
+                                    <div
+                                        className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shadow-inner"
+                                        style={{
+                                            background: activeProfileId === profile.id
+                                                ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%)'
+                                                : 'rgba(255, 255, 255, 0.05)',
+                                            color: activeProfileId === profile.id ? '#a5b4fc' : 'rgba(255, 255, 255, 0.4)',
+                                            border: activeProfileId === profile.id ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid rgba(255, 255, 255, 0.05)'
+                                        }}
+                                    >
+                                        {profile.name.charAt(0).toUpperCase()}
+                                    </div>
+
+                                    {/* Name */}
+                                    <span
+                                        className="text-sm font-medium truncate flex-1 transition-colors"
+                                        style={{
+                                            color: activeProfileId === profile.id ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.6)'
+                                        }}
+                                    >
+                                        {profile.name}
+                                    </span>
+
+                                    {/* Active Indicator & Hover Arrow */}
+                                    <div className="flex items-center justify-center w-4">
+                                        {activeProfileId === profile.id ? (
+                                            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                                        ) : (
+                                            <svg
+                                                className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all duration-200 -translate-x-2 group-hover:translate-x-0"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                                style={{ color: 'rgba(255, 255, 255, 0.3)' }}
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                </button>
+                            )) : (
+                                <div className="px-3 py-8 text-center flex flex-col items-center gap-2 opacity-50">
+                                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs text-stone-400">Profil yok</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+
                 {/* Ana kontrol bar - Glassmorphism */}
                 <div className={`
                     floating-bar
@@ -35,13 +172,18 @@ function BottomBar({ onHoverChange }) {
                         {/* Gemini */}
                         <button
                             className={`floating-btn floating-btn--model ${currentAI === 'gemini' ? 'floating-btn--selected' : ''}`}
-                            onClick={() => setCurrentAI('gemini')}
+                            onClick={handleGeminiClick}
                             title="Gemini"
                         >
                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 0C5.352 0 0 5.352 0 12s5.352 12 12 12 12-5.352 12-12S18.648 0 12 0zm0 21.6c-5.292 0-9.6-4.308-9.6-9.6S6.708 2.4 12 2.4s9.6 4.308 9.6 9.6-4.308 9.6-9.6 9.6zm0-16.8c-3.972 0-7.2 3.228-7.2 7.2s3.228 7.2 7.2 7.2 7.2-3.228 7.2-7.2-3.228-7.2-7.2-7.2zm0 12c-2.652 0-4.8-2.148-4.8-4.8s2.148-4.8 4.8-4.8 4.8 2.148 4.8 4.8-2.148 4.8-4.8 4.8z" />
                             </svg>
-                            <span className="floating-btn__label">{t('gemini')}</span>
+                            <span className="floating-btn__label flex items-center gap-1">
+                                {t('gemini')}
+                                {activeProfile && currentAI === 'gemini' && (
+                                    <span style={{ opacity: 0.5 }}>({activeProfile.name})</span>
+                                )}
+                            </span>
                         </button>
 
                         {/* ChatGPT */}
@@ -83,6 +225,19 @@ function BottomBar({ onHoverChange }) {
                     <div className="floating-bar__indicator" />
                 </div>
             </div>
+
+            {/* Animation Keyframes for dropdown */}
+            <style>{`
+                @keyframes slideUpFade {
+                    0% { opacity: 0; transform: translateY(10px); }
+                    100% { opacity: 1; transform: translateY(0); }
+                }
+
+                @keyframes menuSpring {
+                    0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+                    100% { opacity: 1; transform: translateY(0) scale(1); }
+                }
+            `}</style>
 
             {/* Settings Modal */}
             <SettingsModal

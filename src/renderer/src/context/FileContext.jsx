@@ -30,6 +30,7 @@ export function FileProvider({ children }) {
 
     // Uygulama başlatıldığında dosya erişimlerini yenile (Re-hydration)
     // FIX: Stale closure sorunu çözüldü - sadece başlangıçtaki dosyaları günceller
+    // PERFORMANS: Batch işleme ile aynı anda çok fazla I/O önlenir
     useEffect(() => {
         const rehydrateFiles = async () => {
             if (!window.electronAPI) return
@@ -48,23 +49,28 @@ export function FileProvider({ children }) {
 
             const updates = new Map()
 
-            // Tüm dosyalar için yetkilendirmeyi yenile
-            await Promise.all(filesToRehydrate.map(async (file) => {
-                try {
-                    const result = await window.electronAPI.getPdfStreamUrl(file.path)
+            // PERFORMANS: 5'erli batch'ler halinde işle (concurrent I/O limiti)
+            const BATCH_SIZE = 5
+            for (let i = 0; i < filesToRehydrate.length; i += BATCH_SIZE) {
+                const batch = filesToRehydrate.slice(i, i + BATCH_SIZE)
 
-                    if (result && result.streamUrl) {
-                        // Yeni streamUrl alındı
-                        updates.set(file.id, { streamUrl: result.streamUrl, error: false })
-                    } else {
-                        // Dosya bulunamadı veya erişim hatası
+                await Promise.all(batch.map(async (file) => {
+                    try {
+                        const result = await window.electronAPI.getPdfStreamUrl(file.path)
+
+                        if (result && result.streamUrl) {
+                            // Yeni streamUrl alındı
+                            updates.set(file.id, { streamUrl: result.streamUrl, error: false })
+                        } else {
+                            // Dosya bulunamadı veya erişim hatası
+                            updates.set(file.id, { error: true })
+                        }
+                    } catch (err) {
+                        console.error('[Rehydration] Dosya yenileme hatası:', file.path, err)
                         updates.set(file.id, { error: true })
                     }
-                } catch (err) {
-                    console.error('[Rehydration] Dosya yenileme hatası:', file.path, err)
-                    updates.set(file.id, { error: true })
-                }
-            }))
+                }))
+            }
 
             // Değişiklik varsa state'i güncelle
             // FIX: Fonksiyonel güncelleme ile EN GÜNCEL state'i kullan
