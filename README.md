@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Version-2.1.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Electron-28.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/Vite-5.0.10-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
@@ -17,11 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="./README_TR.md">🇹🇷 Türkçe</a> •
-  <a href="./docs/README_ZH.md">🇨🇳 中文</a> •
-  <a href="./docs/README_HI.md">🇮🇳 हिन्दी</a> •
-  <a href="./docs/README_ES.md">🇪🇸 Español</a> •
-  <a href="./docs/README_AR.md">🇸🇦 العربية</a>
+  <a href="./README_TR.md">🇹🇷 Türkçe</a>
 </p>
 
 ---
@@ -34,14 +31,37 @@
 
 | Feature | Description |
 |---------|-------------|
-| 📄 **PDF Viewer** | Full-featured PDF viewer with zoom, navigation, and text selection |
+| 📄 **PDF Viewer** | Full-featured PDF viewer with zoom, navigation, search, and text selection |
 | 🤖 **AI Integration** | Built-in support for ChatGPT and Google Gemini |
+| 👤 **Profile System** | Multiple account profiles with encrypted cookie storage |
+| 🔐 **Secure Storage** | OS-level encryption (Windows DPAPI) for sensitive data |
 | ✂️ **Text Selection** | Select text from PDF and send it directly to AI with one click |
 | 📸 **Screenshot Tool** | Capture any area of the PDF and send it to AI for analysis |
 | 🔄 **Auto-Send Mode** | Automatically send selected text to AI |
 | 📐 **Resizable Panels** | Drag to resize panels according to your preference |
 | 💾 **Persistent Settings** | Your preferences are saved between sessions |
 | 🎨 **Modern UI** | Glassmorphism design with smooth animations |
+| 🌐 **Multi-Language** | English and Turkish support |
+
+---
+
+## 🆕 What's New in v2.1.0
+
+### Platform Detection System
+- 🔍 Automatic platform detection from cookie domains (Gemini/ChatGPT)
+- ⚠️ Platform mismatch warnings when importing wrong cookies
+- 🔀 Mixed cookie detection and reporting
+- 📋 Unknown domain notifications
+
+### Notification System
+- 🔔 Toast notifications for cookie reset errors
+- ✅ Platform info shown on profile creation
+- 🚫 Replaced browser alerts with modern toasts
+
+### Bug Fixes
+- Fixed missing `target` field in cookies-changed events
+- Fixed misleading error messages in cookie reset flow
+- Fixed default Gemini login state issue in AiWebview
 
 ---
 
@@ -60,9 +80,10 @@ Seamlessly switch between AI platforms with the bottom bar controls.
 
 ### Key UI Elements
 - **File Explorer** - Premium glassmorphism header with drag-and-drop support
-- **PDF Viewer** - Page navigation, zoom controls, text selection with floating "Send to AI" button
+- **PDF Viewer** - Page navigation, zoom controls, search, text selection with floating "Send to AI" button
 - **AI Panel** - Switch between ChatGPT and Gemini with auto-send toggle
 - **Bottom Bar** - Quick access to AI platforms and settings
+- **Settings Modal** - Profile management, cookie import, language selection
 
 </details>
 
@@ -99,6 +120,10 @@ Seamlessly switch between AI platforms with the bottom bar controls.
    npm run build
    ```
 
+### Download Pre-built Release
+
+You can also download the latest installer from [Releases](https://github.com/ozymandias-get/Quizlab-Reader/releases).
+
 ---
 
 ## 📁 Project Structure
@@ -107,7 +132,15 @@ Seamlessly switch between AI platforms with the bottom bar controls.
 Quizlab-Reader/
 ├── src/
 │   ├── main/                    # Electron main process
-│   │   └── index.js             # Main entry point, window management
+│   │   ├── index.js             # Main entry point
+│   │   ├── windowManager.js     # Window lifecycle management
+│   │   ├── profileManager.js    # Profile CRUD & cookie management
+│   │   ├── cookieEncryption.js  # OS-level encryption (DPAPI)
+│   │   ├── cookieImport.js      # Cookie validation & import
+│   │   ├── googleAuth.js        # Google authentication popup
+│   │   ├── pdfProtocol.js       # Custom PDF protocol handler
+│   │   ├── browserConfig.js     # Browser/UA configuration
+│   │   └── ipcHandlers.js       # IPC message handlers
 │   │
 │   ├── preload/                 # Preload scripts
 │   │   └── index.js             # Secure IPC bridge
@@ -121,60 +154,60 @@ Quizlab-Reader/
 │           │   ├── AiWebview.jsx        # AI platform webview
 │           │   ├── BottomBar.jsx        # Bottom control bar
 │           │   ├── FloatingButton.jsx   # "Send to AI" floating button
-│           │   ├── PdfViewer.jsx        # PDF viewer component
 │           │   ├── ScreenshotTool.jsx   # Screenshot capture tool
 │           │   ├── SettingsModal.jsx    # Settings modal component
+│           │   ├── CookieImportModal.jsx # Cookie import dialog
+│           │   │
+│           │   ├── pdf/                 # 📄 Modular PDF Viewer
+│           │   │   ├── index.js               # Barrel export
+│           │   │   ├── PdfViewer.jsx          # Main PDF component
+│           │   │   ├── PdfToolbar.jsx         # Toolbar controls
+│           │   │   ├── PdfSearchBar.jsx       # Search functionality
+│           │   │   ├── PdfPlaceholder.jsx     # Empty state
+│           │   │   └── hooks/                 # PDF-specific hooks
+│           │   │       ├── usePdfPlugins.js
+│           │   │       ├── usePdfNavigation.js
+│           │   │       ├── usePdfScreenshot.js
+│           │   │       ├── usePdfTextSelection.js
+│           │   │       └── usePdfContextMenu.js
+│           │   │
+│           │   ├── settings/            # ⚙️ Settings Components
+│           │   │   ├── index.js               # Barrel export
+│           │   │   ├── DataTab.jsx            # Cookie & profile management
+│           │   │   ├── CookieSection.jsx      # Cookie reset controls
+│           │   │   ├── ProfileSection.jsx     # Multi-account profiles
+│           │   │   ├── LanguageTab.jsx        # Language selection
+│           │   │   └── AboutTab.jsx           # App info & updates
 │           │   │
 │           │   └── FileExplorer/        # 📁 Modular File Explorer
-│           │       ├── index.jsx              # Main FileExplorer component
+│           │       ├── index.jsx              # Main component
 │           │       ├── TreeItem.jsx           # Tree item with drag-drop
-│           │       ├── FileExplorerHeader.jsx # Glassmorphism header
-│           │       ├── FileExplorerFooter.jsx # Stats footer
-│           │       ├── DeleteConfirmModal.jsx # Custom delete dialog
-│           │       ├── DropOverlay.jsx        # Drag-drop overlay
-│           │       ├── EmptyState.jsx         # Empty library state
-│           │       ├── NewFolderInput.jsx     # New folder input
-│           │       ├── icons/                 # SVG icon components
-│           │       │   └── FileExplorerIcons.jsx
-│           │       └── hooks/                 # Custom hooks
-│           │           └── useExternalDragDrop.js
+│           │       └── ...
 │           │
 │           ├── context/         # React context providers
-│           │   └── FileContext.jsx      # File system state management
+│           │   ├── AppContext.jsx       # Global app state
+│           │   ├── FileContext.jsx      # File system management
+│           │   ├── ToastContext.jsx     # Toast notifications
+│           │   └── LanguageContext.jsx  # i18n support
 │           │
 │           ├── hooks/           # Custom React hooks
-│           │   ├── index.js             # Hooks barrel export
-│           │   ├── useAISender.js       # AI message sending logic
-│           │   ├── useLocalStorage.js   # Local storage persistence
-│           │   ├── usePanelResize.js    # Panel resizing logic
-│           │   └── useScreenshot.js     # Screenshot capture logic
+│           │   ├── useSettings.js       # Settings modal logic
+│           │   ├── useAISender.js       # AI message sending
+│           │   ├── useLocalStorage.js   # Persistence
+│           │   └── usePanelResize.js    # Panel resizing
 │           │
-│           ├── constants/       # Configuration constants
-│           │   └── aiSites.js           # AI platforms configuration
-│           │
-│           └── styles/          # CSS styles
-│               ├── index.css            # Main stylesheet entry
-│               └── modules/             # Modular CSS files
-│                   ├── _animations.css
-│                   ├── _base.css
-│                   ├── _buttons.css
-│                   ├── _floating-bar.css
-│                   ├── _glass-panel.css
-│                   ├── _pdf-viewer.css
-│                   ├── _resizer.css
-│                   ├── _screenshot.css
-│                   └── _utilities.css
+│           └── constants/       # Configuration constants
+│               └── aiSites.js           # AI platforms config
 │
 ├── docs/                        # Documentation
 │   ├── screenshots/             # Application screenshots
-│   │   ├── main-interface-chatgpt.png
-│   │   └── main-interface-gemini.png
 │   └── README_*.md              # Translations
 │
-├── package.json                 # Project dependencies and scripts
-├── vite.config.js               # Vite configuration
-├── tailwind.config.js           # Tailwind CSS configuration
-└── postcss.config.js            # PostCSS configuration
+├── resources/                   # Application resources
+│   ├── icon.ico                 # Windows icon
+│   └── icon.png                 # macOS/Linux icon
+│
+└── package.json                 # Project configuration
 ```
 
 ---
@@ -190,35 +223,45 @@ Quizlab-Reader/
 | **Vite** | 5.0.10 | Build tool and dev server |
 | **PDF.js** | 3.11.174 | PDF rendering engine |
 
-### Development Tools
+### Security Features
 
-| Tool | Purpose |
-|------|---------|
-| **Tailwind CSS** | Utility-first CSS framework |
-| **Concurrently** | Run multiple commands |
-| **Wait-on** | Wait for resources before proceeding |
-| **html2canvas** | Screenshot capture |
+| Feature | Technology |
+|---------|------------|
+| **Cookie Encryption** | Windows DPAPI via Electron safeStorage |
+| **Secure IPC** | Context isolation with preload bridge |
+| **Session Isolation** | Per-profile partition system |
+| **Domain Allowlist** | Strict navigation control |
 
 ---
 
 ## 📖 Usage Guide
 
+### Profile Management
+
+1. Open **Settings** (gear icon in bottom bar)
+2. Go to **Data** tab
+3. Click **Add Account** to create a new profile
+4. Import cookies from your browser using EditThisCookie extension
+5. The platform (Gemini/ChatGPT) is automatically detected from cookie domains
+
+### Cookie Import (Recommended Method)
+
+1. Install [EditThisCookie](https://chromewebstore.google.com/detail/editthiscookie-v3/ojfebgpkimhlhcblbalbfjblapadhbol) extension
+2. Login to gemini.google.com or chatgpt.com in Chrome (use Incognito with single account)
+3. Click EditThisCookie icon → Export → Copy JSON
+4. In Quizlab Reader: Settings → Data → Add Account → Paste JSON
+
 ### Opening a PDF
 
-1. Click the **"PDF Dosyası Seç"** button in the PDF viewer toolbar
-2. Select a PDF file from your computer
-3. The PDF will be displayed in the left panel
+1. Click **"Select PDF"** button or use the file explorer
+2. Drag and drop PDF files directly into the application
+3. PDFs are stored in your local library for quick access
 
 ### Sending Text to AI
 
 1. **Select text** in the PDF viewer by clicking and dragging
-2. A floating **"AI'ya Gönder"** button will appear
+2. A floating **"Send to AI"** button will appear
 3. Click the button to send the selected text to the current AI
-
-### Using Auto-Send
-
-1. Toggle the **auto-send** button in the PDF toolbar (green when active)
-2. When enabled, selected text is automatically sent to AI
 
 ### Taking Screenshots
 
@@ -230,13 +273,7 @@ Quizlab-Reader/
 
 1. Hover over the bottom bar to reveal the control panel
 2. Click on **ChatGPT** or **Gemini** to switch platforms
-3. Your selection is saved for future sessions
-
-### Resizing Panels
-
-1. Hover over the divider between the PDF and AI panels
-2. Click and drag to resize
-3. Your panel sizes are saved automatically
+3. Each platform maintains its own session and chat history
 
 ---
 
@@ -245,6 +282,7 @@ Quizlab-Reader/
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl + O` | Open PDF file |
+| `Ctrl + F` | Search in PDF |
 | `Ctrl + +` | Zoom in |
 | `Ctrl + -` | Zoom out |
 | `Ctrl + 0` | Reset zoom |
@@ -258,26 +296,10 @@ Quizlab-Reader/
 
 Currently supported AI platforms (configured in `src/renderer/src/constants/aiSites.js`):
 
-| Platform | URL |
-|----------|-----|
-| ChatGPT | https://chatgpt.com |
-| Gemini | https://gemini.google.com |
-
-### Adding New AI Platforms
-
-To add a new AI platform, edit `aiSites.js`:
-
-```javascript
-export const AI_SITES = {
-    // ... existing platforms
-    newPlatform: {
-        url: 'https://example.com',
-        name: 'example.com',
-        displayName: 'New Platform',
-        icon: 'newplatform'
-    }
-}
-```
+| Platform | URL | Cookie Domains |
+|----------|-----|----------------|
+| ChatGPT | https://chatgpt.com | chatgpt.com, openai.com |
+| Gemini | https://gemini.google.com | google.com, gemini.google.com |
 
 ---
 

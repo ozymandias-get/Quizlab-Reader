@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Sürüm-2.1.0-blue?style=for-the-badge" alt="Sürüm">
   <img src="https://img.shields.io/badge/Electron-28.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/Vite-5.0.10-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
@@ -16,11 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="./README.md">🇬🇧 English</a> •
-  <a href="./docs/README_ZH.md">🇨🇳 中文</a> •
-  <a href="./docs/README_HI.md">🇮🇳 हिन्दी</a> •
-  <a href="./docs/README_ES.md">🇪🇸 Español</a> •
-  <a href="./docs/README_AR.md">🇸🇦 العربية</a>
+  <a href="./README.md">🇬🇧 English</a>
 </p>
 
 ---
@@ -33,14 +30,37 @@
 
 | Özellik | Açıklama |
 |---------|----------|
-| 📄 **PDF Görüntüleyici** | Yakınlaştırma, gezinme ve metin seçimi özellikli tam donanımlı PDF görüntüleyici |
+| 📄 **PDF Görüntüleyici** | Yakınlaştırma, gezinme, arama ve metin seçimi özellikli tam donanımlı PDF görüntüleyici |
 | 🤖 **Yapay Zeka Entegrasyonu** | ChatGPT ve Google Gemini için yerleşik destek |
+| 👤 **Profil Sistemi** | Şifreli cookie depolama ile çoklu hesap profilleri |
+| 🔐 **Güvenli Depolama** | Hassas veriler için işletim sistemi seviyesinde şifreleme (Windows DPAPI) |
 | ✂️ **Metin Seçimi** | PDF'den metin seçin ve tek tıkla doğrudan yapay zekaya gönderin |
 | 📸 **Ekran Görüntüsü Aracı** | PDF'in herhangi bir alanını yakalayın ve analiz için yapay zekaya gönderin |
 | 🔄 **Otomatik Gönderme Modu** | Seçilen metni otomatik olarak yapay zekaya gönderin |
 | 📐 **Yeniden Boyutlandırılabilir Paneller** | Tercihinize göre panelleri sürükleyerek yeniden boyutlandırın |
 | 💾 **Kalıcı Ayarlar** | Tercihleriniz oturumlar arasında kaydedilir |
 | 🎨 **Modern Arayüz** | Akıcı animasyonlarla cam efekti tasarımı |
+| 🌐 **Çoklu Dil** | Türkçe ve İngilizce desteği |
+
+---
+
+## 🆕 v2.1.0 Sürümündeki Yenilikler
+
+### Platform Tespit Sistemi
+- 🔍 Cookie domain'lerinden otomatik platform tespiti (Gemini/ChatGPT)
+- ⚠️ Yanlış cookie import edildiğinde platform uyumsuzluğu uyarısı
+- 🔀 Karışık cookie tespiti ve raporlama
+- 📋 Bilinmeyen domain'ler için bilgilendirme
+
+### Bildirim Sistemi
+- 🔔 Cookie sıfırlama hatalarında toast bildirimi
+- ✅ Profil oluşturma sonuçlarında platform bilgisi
+- 🚫 Tarayıcı alert'leri modern toast'lara dönüştürüldü
+
+### Hata Düzeltmeleri
+- cookies-changed event'ine eksik target alanı eklendi
+- Cookie sıfırlama akışındaki yanıltıcı hata mesajları düzeltildi
+- AiWebview'da varsayılan gemini login state sorunu giderildi
 
 ---
 
@@ -59,9 +79,10 @@ Alt çubuk kontrolleriyle yapay zeka platformları arasında sorunsuz geçiş ya
 
 ### Temel Arayüz Öğeleri
 - **Dosya Gezgini** - Sürükle-bırak destekli premium cam efekti başlık
-- **PDF Görüntüleyici** - Sayfa gezinme, yakınlaştırma kontrolleri, kayan "AI'ya Gönder" butonu ile metin seçimi
+- **PDF Görüntüleyici** - Sayfa gezinme, yakınlaştırma kontrolleri, arama, kayan "AI'ya Gönder" butonu ile metin seçimi
 - **Yapay Zeka Paneli** - Otomatik gönderme ile ChatGPT ve Gemini arasında geçiş
 - **Alt Çubuk** - Yapay zeka platformlarına ve ayarlara hızlı erişim
+- **Ayarlar Modalı** - Profil yönetimi, cookie içe aktarma, dil seçimi
 
 </details>
 
@@ -98,6 +119,10 @@ Alt çubuk kontrolleriyle yapay zeka platformları arasında sorunsuz geçiş ya
    npm run build
    ```
 
+### Hazır Sürümü İndirin
+
+En son yükleyiciyi [Releases](https://github.com/ozymandias-get/Quizlab-Reader/releases) sayfasından indirebilirsiniz.
+
 ---
 
 ## 📁 Proje Yapısı
@@ -106,7 +131,15 @@ Alt çubuk kontrolleriyle yapay zeka platformları arasında sorunsuz geçiş ya
 Quizlab-Reader/
 ├── src/
 │   ├── main/                    # Electron ana süreci
-│   │   └── index.js             # Ana giriş noktası, pencere yönetimi
+│   │   ├── index.js             # Ana giriş noktası
+│   │   ├── windowManager.js     # Pencere yaşam döngüsü yönetimi
+│   │   ├── profileManager.js    # Profil CRUD & cookie yönetimi
+│   │   ├── cookieEncryption.js  # İşletim sistemi seviyesi şifreleme (DPAPI)
+│   │   ├── cookieImport.js      # Cookie doğrulama & içe aktarma
+│   │   ├── googleAuth.js        # Google kimlik doğrulama popup'ı
+│   │   ├── pdfProtocol.js       # Özel PDF protokol işleyicisi
+│   │   ├── browserConfig.js     # Tarayıcı/UA yapılandırması
+│   │   └── ipcHandlers.js       # IPC mesaj işleyicileri
 │   │
 │   ├── preload/                 # Ön yükleme betikleri
 │   │   └── index.js             # Güvenli IPC köprüsü
@@ -120,60 +153,54 @@ Quizlab-Reader/
 │           │   ├── AiWebview.jsx        # Yapay zeka platformu webview'ı
 │           │   ├── BottomBar.jsx        # Alt kontrol çubuğu
 │           │   ├── FloatingButton.jsx   # "AI'ya Gönder" kayan butonu
-│           │   ├── PdfViewer.jsx        # PDF görüntüleyici bileşeni
 │           │   ├── ScreenshotTool.jsx   # Ekran görüntüsü yakalama aracı
 │           │   ├── SettingsModal.jsx    # Ayarlar modal bileşeni
+│           │   ├── CookieImportModal.jsx # Cookie içe aktarma dialogu
+│           │   │
+│           │   ├── pdf/                 # 📄 Modüler PDF Görüntüleyici
+│           │   │   ├── index.js               # Toplu dışa aktarım
+│           │   │   ├── PdfViewer.jsx          # Ana PDF bileşeni
+│           │   │   ├── PdfToolbar.jsx         # Araç çubuğu kontrolleri
+│           │   │   ├── PdfSearchBar.jsx       # Arama işlevi
+│           │   │   ├── PdfPlaceholder.jsx     # Boş durum
+│           │   │   └── hooks/                 # PDF'ye özel hook'lar
+│           │   │
+│           │   ├── settings/            # ⚙️ Ayarlar Bileşenleri
+│           │   │   ├── index.js               # Toplu dışa aktarım
+│           │   │   ├── DataTab.jsx            # Cookie & profil yönetimi
+│           │   │   ├── CookieSection.jsx      # Cookie sıfırlama kontrolleri
+│           │   │   ├── ProfileSection.jsx     # Çoklu hesap profilleri
+│           │   │   ├── LanguageTab.jsx        # Dil seçimi
+│           │   │   └── AboutTab.jsx           # Uygulama bilgisi & güncellemeler
 │           │   │
 │           │   └── FileExplorer/        # 📁 Modüler Dosya Gezgini
-│           │       ├── index.jsx              # Ana FileExplorer bileşeni
-│           │       ├── TreeItem.jsx           # Sürükle-bırak destekli ağaç öğesi
-│           │       ├── FileExplorerHeader.jsx # Cam efekti başlık
-│           │       ├── FileExplorerFooter.jsx # İstatistik alt bilgi
-│           │       ├── DeleteConfirmModal.jsx # Özel silme dialogu
-│           │       ├── DropOverlay.jsx        # Sürükle-bırak overlay'ı
-│           │       ├── EmptyState.jsx         # Boş kütüphane durumu
-│           │       ├── NewFolderInput.jsx     # Yeni klasör girişi
-│           │       ├── icons/                 # SVG ikon bileşenleri
-│           │       │   └── FileExplorerIcons.jsx
-│           │       └── hooks/                 # Özel hook'lar
-│           │           └── useExternalDragDrop.js
+│           │       ├── index.jsx              # Ana bileşen
+│           │       └── ...
 │           │
 │           ├── context/         # React context sağlayıcıları
-│           │   └── FileContext.jsx      # Dosya sistemi durum yönetimi
+│           │   ├── AppContext.jsx       # Global uygulama durumu
+│           │   ├── FileContext.jsx      # Dosya sistemi yönetimi
+│           │   ├── ToastContext.jsx     # Toast bildirimleri
+│           │   └── LanguageContext.jsx  # i18n desteği
 │           │
 │           ├── hooks/           # Özel React hook'ları
-│           │   ├── index.js             # Hook'ların toplu dışa aktarımı
-│           │   ├── useAISender.js       # Yapay zekaya mesaj gönderme mantığı
-│           │   ├── useLocalStorage.js   # Yerel depolama kalıcılığı
-│           │   ├── usePanelResize.js    # Panel yeniden boyutlandırma mantığı
-│           │   └── useScreenshot.js     # Ekran görüntüsü yakalama mantığı
+│           │   ├── useSettings.js       # Ayarlar modal mantığı
+│           │   ├── useAISender.js       # Yapay zekaya mesaj gönderme
+│           │   ├── useLocalStorage.js   # Kalıcılık
+│           │   └── usePanelResize.js    # Panel yeniden boyutlandırma
 │           │
-│           ├── constants/       # Yapılandırma sabitleri
-│           │   └── aiSites.js           # Yapay zeka platformları yapılandırması
-│           │
-│           └── styles/          # CSS stilleri
-│               ├── index.css            # Ana stil dosyası girişi
-│               └── modules/             # Modüler CSS dosyaları
-│                   ├── _animations.css
-│                   ├── _base.css
-│                   ├── _buttons.css
-│                   ├── _floating-bar.css
-│                   ├── _glass-panel.css
-│                   ├── _pdf-viewer.css
-│                   ├── _resizer.css
-│                   ├── _screenshot.css
-│                   └── _utilities.css
+│           └── constants/       # Yapılandırma sabitleri
+│               └── aiSites.js           # Yapay zeka platformları yapılandırması
 │
 ├── docs/                        # Dokümantasyon
 │   ├── screenshots/             # Uygulama ekran görüntüleri
-│   │   ├── main-interface-chatgpt.png
-│   │   └── main-interface-gemini.png
 │   └── README_*.md              # Çeviriler
 │
-├── package.json                 # Proje bağımlılıkları ve betikler
-├── vite.config.js               # Vite yapılandırması
-├── tailwind.config.js           # Tailwind CSS yapılandırması
-└── postcss.config.js            # PostCSS yapılandırması
+├── resources/                   # Uygulama kaynakları
+│   ├── icon.ico                 # Windows ikonu
+│   └── icon.png                 # macOS/Linux ikonu
+│
+└── package.json                 # Proje yapılandırması
 ```
 
 ---
@@ -189,35 +216,45 @@ Quizlab-Reader/
 | **Vite** | 5.0.10 | Derleme aracı ve geliştirme sunucusu |
 | **PDF.js** | 3.11.174 | PDF işleme motoru |
 
-### Geliştirme Araçları
+### Güvenlik Özellikleri
 
-| Araç | Amaç |
-|------|------|
-| **Tailwind CSS** | Yardımcı öncelikli CSS çatısı |
-| **Concurrently** | Birden fazla komutu çalıştırma |
-| **Wait-on** | Devam etmeden önce kaynak bekleme |
-| **html2canvas** | Ekran görüntüsü yakalama |
+| Özellik | Teknoloji |
+|---------|-----------|
+| **Cookie Şifreleme** | Electron safeStorage ile Windows DPAPI |
+| **Güvenli IPC** | Ön yükleme köprüsü ile context izolasyonu |
+| **Oturum İzolasyonu** | Profil başına partition sistemi |
+| **Domain İzin Listesi** | Katı gezinme kontrolü |
 
 ---
 
 ## 📖 Kullanım Kılavuzu
 
+### Profil Yönetimi
+
+1. **Ayarlar**'ı açın (alt çubuktaki dişli simgesi)
+2. **Veri** sekmesine gidin
+3. Yeni bir profil oluşturmak için **Hesap Ekle**'ye tıklayın
+4. EditThisCookie eklentisini kullanarak tarayıcınızdan cookie'leri içe aktarın
+5. Platform (Gemini/ChatGPT) cookie domain'lerinden otomatik olarak tespit edilir
+
+### Cookie İçe Aktarma (Önerilen Yöntem)
+
+1. [EditThisCookie](https://chromewebstore.google.com/detail/editthiscookie-v3/ojfebgpkimhlhcblbalbfjblapadhbol) eklentisini yükleyin
+2. Chrome'da gemini.google.com veya chatgpt.com'a giriş yapın (tek hesapla Gizli mod kullanın)
+3. EditThisCookie simgesine tıklayın → Export → JSON'u kopyalayın
+4. Quizlab Reader'da: Ayarlar → Veri → Hesap Ekle → JSON'u yapıştırın
+
 ### PDF Açma
 
-1. PDF görüntüleyici araç çubuğundaki **"PDF Dosyası Seç"** düğmesine tıklayın
-2. Bilgisayarınızdan bir PDF dosyası seçin
-3. PDF sol panelde görüntülenecektir
+1. **"PDF Seç"** butonuna tıklayın veya dosya gezginini kullanın
+2. PDF dosyalarını doğrudan uygulamaya sürükleyip bırakın
+3. PDF'ler hızlı erişim için yerel kütüphanenizde saklanır
 
 ### Yapay Zekaya Metin Gönderme
 
 1. PDF görüntüleyicide tıklayıp sürükleyerek **metin seçin**
 2. Kayan **"AI'ya Gönder"** butonu görünecektir
 3. Seçili metni mevcut yapay zekaya göndermek için butona tıklayın
-
-### Otomatik Göndermeyi Kullanma
-
-1. PDF araç çubuğundaki **otomatik gönder** düğmesini açın (aktifken yeşil)
-2. Etkinleştirildiğinde, seçilen metin otomatik olarak yapay zekaya gönderilir
 
 ### Ekran Görüntüsü Alma
 
@@ -229,13 +266,7 @@ Quizlab-Reader/
 
 1. Kontrol panelini ortaya çıkarmak için alt çubuğun üzerine gelin
 2. Platformlar arasında geçiş yapmak için **ChatGPT** veya **Gemini**'ye tıklayın
-3. Seçiminiz gelecek oturumlar için kaydedilir
-
-### Panelleri Yeniden Boyutlandırma
-
-1. PDF ve yapay zeka panelleri arasındaki ayırıcının üzerine gelin
-2. Yeniden boyutlandırmak için tıklayıp sürükleyin
-3. Panel boyutlarınız otomatik olarak kaydedilir
+3. Her platform kendi oturumunu ve sohbet geçmişini korur
 
 ---
 
@@ -244,6 +275,7 @@ Quizlab-Reader/
 | Kısayol | Eylem |
 |---------|-------|
 | `Ctrl + O` | PDF dosyası aç |
+| `Ctrl + F` | PDF'de ara |
 | `Ctrl + +` | Yakınlaştır |
 | `Ctrl + -` | Uzaklaştır |
 | `Ctrl + 0` | Yakınlaştırmayı sıfırla |
@@ -257,26 +289,10 @@ Quizlab-Reader/
 
 Şu anda desteklenen yapay zeka platformları (`src/renderer/src/constants/aiSites.js` dosyasında yapılandırılmış):
 
-| Platform | URL |
-|----------|-----|
-| ChatGPT | https://chatgpt.com |
-| Gemini | https://gemini.google.com |
-
-### Yeni Yapay Zeka Platformu Ekleme
-
-Yeni bir yapay zeka platformu eklemek için `aiSites.js` dosyasını düzenleyin:
-
-```javascript
-export const AI_SITES = {
-    // ... mevcut platformlar
-    yeniPlatform: {
-        url: 'https://ornek.com',
-        name: 'ornek.com',
-        displayName: 'Yeni Platform',
-        icon: 'yeniplatform'
-    }
-}
-```
+| Platform | URL | Cookie Domain'leri |
+|----------|-----|-------------------|
+| ChatGPT | https://chatgpt.com | chatgpt.com, openai.com |
+| Gemini | https://gemini.google.com | google.com, gemini.google.com |
 
 ---
 
