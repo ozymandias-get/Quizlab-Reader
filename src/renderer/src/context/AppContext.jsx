@@ -184,6 +184,8 @@ export function AppProvider({ children }) {
         try {
             const result = await window.electronAPI.checkForUpdates()
 
+            // Unmount kontrolü yapılmıyor çünkü bu fonksiyon useCallback ile memoize edilmiş
+            // ve component unmount olduğunda zaten çağrılmaz (setTimeout cleanup ile)
             if (result.error) {
                 // Hata durumu - updateInfo'ya hata bilgisi kaydet
                 setUpdateAvailable(false)
@@ -218,19 +220,20 @@ export function AppProvider({ children }) {
         }, 5000) // 5 saniye sonra kontrol et
 
         return () => clearTimeout(timer)
-    }, []) // Sadece mount'ta bir kez çalışır
+    }, [checkForUpdates]) // checkForUpdates useCallback ile memoize edildiği için güvenli
 
 
     // AI Sender fonksiyonları
+    // TUTARLI DÖNÜŞ TİPİ: Her zaman { success: boolean, error?: string } objesi döner
     const sendTextToAI = useCallback(async (text) => {
         const webview = webviewRef.current
-        if (!webview || !text) return false
+        if (!webview || !text) return { success: false, error: 'invalid_input' }
 
         try {
             const aiConfig = AI_SITES[currentAI]
             if (!aiConfig) {
                 console.error('[sendTextToAI] AI config bulunamadı:', currentAI)
-                return false
+                return { success: false, error: 'config_not_found' }
             }
 
             const selector = aiConfig.inputSelector
@@ -240,7 +243,7 @@ export function AppProvider({ children }) {
 
             if (!focusResult.success) {
                 console.error('[sendTextToAI] Input bulunamadı:', focusResult.reason)
-                return false
+                return { success: false, error: 'input_not_found' }
             }
 
             // 2. Native olarak metni yaz (Klavye simülasyonu)
@@ -267,7 +270,7 @@ export function AppProvider({ children }) {
                 }
             }
 
-            return true
+            return { success: true }
         } catch (error) {
             // Webview hazır değilse veya DOM-ready olmadan çağrıldıysa bu hatayı alırız
             if (error.message?.includes('not ready') || error.message?.includes('dom-ready')) {
@@ -275,26 +278,27 @@ export function AppProvider({ children }) {
                 return { success: false, error: 'webview_not_ready' }
             }
             console.error('[sendTextToAI] ❌ Metin gönderme hatası:', error)
-            return false
+            return { success: false, error: 'unknown_error' }
         }
     }, [currentAI, autoSend])
 
+    // TUTARLI DÖNÜŞ TİPİ: Her zaman { success: boolean, error?: string } objesi döner
     const sendImageToAI = useCallback(async (imageDataUrl) => {
         const webview = webviewRef.current
-        if (!webview || !imageDataUrl) return false
+        if (!webview || !imageDataUrl) return { success: false, error: 'invalid_input' }
 
         try {
             const aiConfig = AI_SITES[currentAI]
             if (!aiConfig) {
                 console.error('[sendImageToAI] AI config bulunamadı:', currentAI)
-                return false
+                return { success: false, error: 'config_not_found' }
             }
 
             // 1. Görüntüyü sistem clipboard'una kopyala (main process üzerinden)
             const copied = await window.electronAPI?.copyImageToClipboard(imageDataUrl)
             if (!copied) {
                 console.error('[sendImageToAI] ❌ Görüntü panoya kopyalanamadı')
-                return false
+                return { success: false, error: 'clipboard_failed' }
             }
             console.log('[sendImageToAI] ✅ Görüntü panoya kopyalandı')
 
@@ -303,7 +307,7 @@ export function AppProvider({ children }) {
 
             if (!focusResult.success) {
                 console.error('[sendImageToAI] ❌ Input bulunamadı:', focusResult.reason)
-                return false
+                return { success: false, error: 'input_not_found' }
             }
             console.log('[sendImageToAI] ✅ Input focus yapıldı:', focusResult.tagName)
 
@@ -353,7 +357,7 @@ export function AppProvider({ children }) {
                 }
             }
 
-            return true
+            return { success: true }
         } catch (error) {
             // Webview hazır değilse veya DOM-ready olmadan çağrıldıysa bu hatayı alırız
             if (error.message?.includes('not ready') || error.message?.includes('dom-ready')) {
@@ -361,7 +365,7 @@ export function AppProvider({ children }) {
                 return { success: false, error: 'webview_not_ready' }
             }
             console.error('[sendImageToAI] ❌ Görüntü gönderme hatası:', error)
-            return false
+            return { success: false, error: 'unknown_error' }
         }
     }, [currentAI, autoSend])
 

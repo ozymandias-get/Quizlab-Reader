@@ -165,23 +165,33 @@ export function useLocalStorageString(key, initialValue, validValues = null) {
         return () => window.removeEventListener('storage', handleStorageChange)
     }, [key, initialValue, validValues])
 
-    // FIX: Stale closure düzeltmesi
+    // FIX: Stale closure düzeltmesi + validValues yazma kontrolü
     const setValue = useCallback((value) => {
         try {
             if (value instanceof Function) {
                 setStoredValue(prevValue => {
                     const newValue = value(prevValue)
+                    // Geçerli değerler varsa kontrol et
+                    if (validValues && !validValues.includes(newValue)) {
+                        console.warn(`useLocalStorageString: "${key}" için geçersiz değer:`, newValue)
+                        return prevValue // Geçersiz değeri kaydetme
+                    }
                     setStorageItem(key, newValue)
                     return newValue
                 })
             } else {
+                // Geçerli değerler varsa kontrol et
+                if (validValues && !validValues.includes(value)) {
+                    console.warn(`useLocalStorageString: "${key}" için geçersiz değer:`, value)
+                    return // Geçersiz değeri kaydetme
+                }
                 setStoredValue(value)
                 setStorageItem(key, value)
             }
         } catch (error) {
             console.warn(`useLocalStorageString: "${key}" için değer kaydedilemedi:`, error)
         }
-    }, [key])
+    }, [key, validValues])
 
     return [storedValue, setValue]
 }

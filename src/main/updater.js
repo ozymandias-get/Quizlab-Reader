@@ -85,7 +85,21 @@ function fetchLatestRelease() {
                         return
                     }
 
+                    // Boş response kontrolü
+                    if (!data || data.trim().length === 0) {
+                        console.warn('[Updater] Empty response from GitHub API')
+                        resolve({ error: 'Empty response' })
+                        return
+                    }
+
                     const release = JSON.parse(data)
+                    
+                    // Geçerli release objesi kontrolü
+                    if (!release || typeof release !== 'object') {
+                        console.warn('[Updater] Invalid release data format')
+                        resolve({ error: 'Invalid response format' })
+                        return
+                    }
                     resolve({
                         version: release.tag_name.replace(/^v/, ''),
                         tagName: release.tag_name,

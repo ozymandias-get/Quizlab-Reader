@@ -9,9 +9,9 @@ const { ipcMain, BrowserWindow, shell, Menu, MenuItem } = require('electron')
  */
 function registerGeneralHandlers() {
     // Ekran görüntüsü yakalama
-    ipcMain.handle('capture-screen', async () => {
+    ipcMain.handle('capture-screen', async (event) => {
         try {
-            const mainWindow = BrowserWindow.getAllWindows()[0]
+            const mainWindow = BrowserWindow.fromWebContents(event.sender)
             if (!mainWindow) return null
 
             const image = await mainWindow.webContents.capturePage()
@@ -25,6 +25,18 @@ function registerGeneralHandlers() {
     // Görüntüyü clipboard'a kopyala
     ipcMain.handle('copy-image-to-clipboard', async (event, dataUrl) => {
         try {
+            // DataURL string kontrolü
+            if (!dataUrl || typeof dataUrl !== 'string') {
+                console.warn('[Clipboard] Geçersiz dataUrl:', typeof dataUrl)
+                return false
+            }
+
+            // DataURL format kontrolü (data:image/... ile başlamalı)
+            if (!dataUrl.startsWith('data:image/')) {
+                console.warn('[Clipboard] Geçersiz dataURL formatı')
+                return false
+            }
+
             const { clipboard, nativeImage } = require('electron')
 
             const image = nativeImage.createFromDataURL(dataUrl)
@@ -45,6 +57,12 @@ function registerGeneralHandlers() {
     // Harici linki sistem tarayıcısında aç
     ipcMain.handle('open-external', async (event, url) => {
         try {
+            // URL string kontrolü
+            if (!url || typeof url !== 'string') {
+                console.warn('[OpenExternal] Geçersiz URL:', url)
+                return false
+            }
+
             const parsedUrl = new URL(url)
             if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
                 await shell.openExternal(url)
@@ -60,6 +78,10 @@ function registerGeneralHandlers() {
     // PDF Context Menu
     ipcMain.on('show-pdf-context-menu', (event) => {
         const win = BrowserWindow.fromWebContents(event.sender)
+        if (!win || win.isDestroyed()) {
+            console.warn('[ContextMenu] Window bulunamadı veya yok edildi')
+            return
+        }
 
         const menu = new Menu()
 
@@ -68,7 +90,9 @@ function registerGeneralHandlers() {
             label: '📄 Tam Sayfa Görüntüsü Al',
             accelerator: 'F',
             click: () => {
-                win.webContents.send('trigger-screenshot', 'full-page')
+                if (win && !win.isDestroyed()) {
+                    win.webContents.send('trigger-screenshot', 'full-page')
+                }
             }
         }))
 
@@ -77,7 +101,9 @@ function registerGeneralHandlers() {
             label: '📸 Alan Seçerek Görüntü Al',
             accelerator: 'C',
             click: () => {
-                win.webContents.send('trigger-screenshot', 'crop')
+                if (win && !win.isDestroyed()) {
+                    win.webContents.send('trigger-screenshot', 'crop')
+                }
             }
         }))
 

@@ -55,6 +55,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Profilleri getir
     getProfiles: () => ipcRenderer.invoke('get-profiles'),
 
+    // Startup durumunu getir (Race condition için)
+    getStartupStatus: () => ipcRenderer.invoke('get-startup-status'),
+
     // Yeni profil oluştur (isim ve opsiyonel cookie JSON)
     createProfile: (name, cookieJson) => ipcRenderer.invoke('create-profile', name, cookieJson),
 
@@ -78,5 +81,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openReleasesPage: () => ipcRenderer.invoke('open-releases-page'),
 
     // Uygulama sürümünü al
-    getAppVersion: () => ipcRenderer.invoke('get-app-version')
+    getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+
+    // ===== SESSION EVENTS =====
+    // Oturum süresi dolduğunda (Main -> Renderer)
+    onSessionExpired: (callback) => {
+        const handler = (event, data) => callback(data)
+        ipcRenderer.on('session-expired', handler)
+        return () => ipcRenderer.removeListener('session-expired', handler)
+    },
+
+    // Cookie restore tamamlandığında (Main -> Renderer)
+    onCookiesRestored: (callback) => {
+        const handler = (event, data) => callback(data)
+        ipcRenderer.on('cookies-restored', handler)
+        return () => ipcRenderer.removeListener('cookies-restored', handler)
+    }
 })

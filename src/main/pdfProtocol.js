@@ -15,8 +15,8 @@ const fs = require('fs')
 const authorizedPdfPaths = new Map()
 
 // PDF yaşam döngüsü sabitleri
-const PDF_PATH_MAX_AGE_MS = 30 * 60 * 1000 // 30 dakika
-const PDF_CLEANUP_INTERVAL_MS = 10 * 60 * 1000 // 10 dakikada bir temizlik
+const PDF_PATH_MAX_AGE_MS = 24 * 60 * 60 * 1000 // 24 saat (Uzun okuma oturumları için artırıldı)
+const PDF_CLEANUP_INTERVAL_MS = 60 * 60 * 1000 // 1 saatte bir temizlik
 
 /**
  * Benzersiz PDF ID'si oluştur
@@ -80,7 +80,7 @@ function startPdfCleanupInterval() {
         clearOldPdfPaths()
     }, PDF_CLEANUP_INTERVAL_MS)
 
-    console.log('[PDF Cleanup] Periyodik temizlik başlatıldı (10 dakika aralık)')
+    console.log('[PDF Cleanup] Periyodik temizlik başlatıldı (1 saat aralık)')
 }
 
 function stopPdfCleanupInterval() {

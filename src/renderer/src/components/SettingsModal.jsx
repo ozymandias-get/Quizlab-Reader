@@ -15,31 +15,45 @@ function SettingsModal({ isOpen, onClose }) {
     // Custom hook ile tüm settings state ve işlemlerini al
     const settings = useSettings(isOpen)
 
-    // ESC tuşu ile kapatma
+    // ESC tuşu ile kapatma - deleteConfirmation açıksa önce onu kapat
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape' && isOpen) {
-                onClose()
+                if (settings.deleteConfirmation) {
+                    // Önce confirmation modal'ı kapat
+                    settings.cancelDeleteProfile()
+                } else {
+                    // Ana modal'ı kapat
+                    onClose()
+                }
             }
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [isOpen, onClose])
+    }, [isOpen, onClose, settings.deleteConfirmation, settings.cancelDeleteProfile])
 
-    // Modal dışına tıklama ile kapatma
+    // Modal dışına tıklama ile kapatma - deleteConfirmation açıksa işlem yapma
     useEffect(() => {
         const handleClickOutside = (e) => {
+            // deleteConfirmation modal'ı açıksa dışarı tıklamayı yoksay
+            // (confirmation modal kendi backdrop'ında handle ediyor)
+            if (settings.deleteConfirmation) return
+
             if (modalRef.current && !modalRef.current.contains(e.target)) {
                 onClose()
             }
         }
+        let timeout = null
         if (isOpen) {
-            setTimeout(() => {
+            timeout = setTimeout(() => {
                 document.addEventListener('mousedown', handleClickOutside)
             }, 100)
         }
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [isOpen, onClose])
+        return () => {
+            if (timeout) clearTimeout(timeout)
+            document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [isOpen, onClose, settings.deleteConfirmation])
 
     if (!isOpen) return null
 
@@ -115,8 +129,10 @@ function SettingsModal({ isOpen, onClose }) {
                             isSwitchingProfile={settings.isSwitchingProfile}
                             handleCreateProfile={settings.handleCreateProfile}
                             handleSwitchProfile={async (id) => {
-                                await settings.handleSwitchProfile(id)
-                                onClose()
+                                const success = await settings.handleSwitchProfile(id)
+                                if (success) {
+                                    onClose()
+                                }
                             }}
                             handleDeleteProfile={settings.handleDeleteProfile}
                         />
@@ -133,6 +149,16 @@ function SettingsModal({ isOpen, onClose }) {
                         />
                     )}
                 </div>
+
+                {/* Delete Confirmation Modal */}
+                {settings.deleteConfirmation && (
+                    <DeleteConfirmationModal
+                        profileName={settings.deleteConfirmation.profileName}
+                        onConfirm={settings.confirmDeleteProfile}
+                        onCancel={settings.cancelDeleteProfile}
+                        isDeleting={settings.isDeletingProfile}
+                    />
+                )}
             </div>
 
             {/* Animation keyframes */}
@@ -269,7 +295,7 @@ function TabNavigation({ activeTab, setActiveTab, t }) {
         },
         {
             id: 'about',
-            label: t('about'),
+            label: t('about') || 'Hakkında',
             icon: (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -324,6 +350,126 @@ function TabNavigation({ activeTab, setActiveTab, t }) {
                 </button>
             ))}
         </div>
+    )
+}
+
+/**
+ * Profil silme onay modalı - Premium Glass Style
+ */
+function DeleteConfirmationModal({ profileName, onConfirm, onCancel, isDeleting }) {
+    return (
+        <div className="absolute inset-0 flex items-center justify-center z-50">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 backdrop-blur-sm"
+                style={{ background: 'rgba(0, 0, 0, 0.6)' }}
+                onClick={onCancel}
+            />
+
+            {/* Modal */}
+            <div
+                className="relative w-full max-w-xs mx-4 p-5 rounded-2xl"
+                style={{
+                    background: 'linear-gradient(165deg, rgba(20, 20, 20, 0.98) 0%, rgba(10, 10, 10, 0.99) 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+                    animation: 'modalEnter 0.2s ease-out forwards'
+                }}
+            >
+                {/* Icon */}
+                <div
+                    className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center"
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.15) 100%)',
+                        border: '1px solid rgba(239, 68, 68, 0.25)'
+                    }}
+                >
+                    <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        style={{ color: 'rgba(248, 113, 113, 1)' }}
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+
+                {/* Title */}
+                <h3
+                    className="text-lg font-semibold text-center mb-2"
+                    style={{ color: 'rgba(255, 255, 255, 0.95)' }}
+                >
+                    Profili Sil
+                </h3>
+
+                {/* Message */}
+                <p
+                    className="text-sm text-center mb-5"
+                    style={{ color: 'rgba(255, 255, 255, 0.6)' }}
+                >
+                    <span style={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 500 }}>"{profileName}"</span>
+                    {' '}profilini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                </p>
+
+                {/* Buttons */}
+                <div className="flex gap-3">
+                    <button
+                        onClick={onCancel}
+                        disabled={isDeleting}
+                        className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            color: 'rgba(255, 255, 255, 0.8)'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'
+                        }}
+                    >
+                        İptal
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={isDeleting}
+                        className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
+                        style={{
+                            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.4) 0%, rgba(220, 38, 38, 0.35) 100%)',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            color: 'rgba(255, 255, 255, 0.95)',
+                            boxShadow: '0 4px 15px -5px rgba(239, 68, 68, 0.4)',
+                            opacity: isDeleting ? 0.7 : 1,
+                            cursor: isDeleting ? 'not-allowed' : 'pointer'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!isDeleting) {
+                                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.5) 0%, rgba(220, 38, 38, 0.45) 100%)'
+                                e.currentTarget.style.boxShadow = '0 6px 20px -5px rgba(239, 68, 68, 0.5)'
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isDeleting) {
+                                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.4) 0%, rgba(220, 38, 38, 0.35) 100%)'
+                                e.currentTarget.style.boxShadow = '0 4px 15px -5px rgba(239, 68, 68, 0.4)'
+                            }
+                        }}
+                    >
+                        {isDeleting ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                <span>Siliniyor...</span>
+                            </>
+                        ) : 'Sil'}
+                    </button>
+                </div>
+            </div>
+        </div >
     )
 }
 

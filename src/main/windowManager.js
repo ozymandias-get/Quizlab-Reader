@@ -2,7 +2,7 @@
  * Window Manager Module
  * Pencere oluşturma, durum kaydetme ve splash screen yönetimi
  */
-const { BrowserWindow, dialog, session, app } = require('electron')
+const { BrowserWindow, dialog, session, app, screen } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { CHROME_USER_AGENT, BROWSER_HEADERS, GOOGLE_HEADERS } = require('./browserConfig')
@@ -21,7 +21,33 @@ function loadWindowState() {
     try {
         if (fs.existsSync(windowStateFile)) {
             const data = fs.readFileSync(windowStateFile, 'utf-8')
+            
+            // Boş dosya kontrolü
+            if (!data || data.trim().length === 0) {
+                console.warn('[WindowState] Dosya boş, varsayılan değerler kullanılıyor')
+                return {
+                    width: 1400,
+                    height: 900,
+                    x: undefined,
+                    y: undefined,
+                    isMaximized: false
+                }
+            }
+            
             const state = JSON.parse(data)
+            
+            // Geçerli format kontrolü
+            if (!state || typeof state !== 'object') {
+                console.warn('[WindowState] Geçersiz state verisi, varsayılan değerler kullanılıyor')
+                return {
+                    width: 1400,
+                    height: 900,
+                    x: undefined,
+                    y: undefined,
+                    isMaximized: false
+                }
+            }
+            
             return state
         }
     } catch (error) {
@@ -42,6 +68,8 @@ function loadWindowState() {
  */
 function saveWindowState(window) {
     try {
+        if (!window || window.isDestroyed()) return
+
         const isMaximized = window.isMaximized()
         const bounds = window.getBounds()
 
@@ -66,6 +94,27 @@ let mainWindow = null
 
 function createWindow() {
     const windowState = loadWindowState()
+
+    // Ekran dışı kontrolü (Pencere koordinatları geçerli mi?)
+    if (windowState.x !== undefined && windowState.y !== undefined) {
+        const display = screen.getDisplayMatching({
+            x: windowState.x,
+            y: windowState.y,
+            width: windowState.width,
+            height: windowState.height
+        })
+
+        if (!display ||
+            windowState.x < display.bounds.x ||
+            windowState.y < display.bounds.y ||
+            windowState.x > display.bounds.x + display.bounds.width ||
+            windowState.y > display.bounds.y + display.bounds.height) {
+
+            console.log('[WindowState] Geçersiz koordinatlar, merkeze alınıyor')
+            windowState.x = undefined
+            windowState.y = undefined
+        }
+    }
 
     const preloadPath = isDev
         ? path.join(__dirname, '../preload/index.js')
@@ -107,7 +156,7 @@ function createWindow() {
     }
 
     // Maximize durumu için normal boyutları takip et
-    mainWindow._lastBounds = null
+    mainWindow._lastBounds = mainWindow.getBounds()
     mainWindow.on('resize', () => {
         if (!mainWindow.isMaximized()) {
             mainWindow._lastBounds = mainWindow.getBounds()
@@ -148,6 +197,11 @@ function createWindow() {
         saveWindowState(mainWindow)
     })
 
+    // Pencere kapandığında referansı temizle (Zombie object oluşumunu engelle)
+    mainWindow.on('closed', () => {
+        mainWindow = null
+    })
+
     // Session ayarları - Webview için
     setupSessions()
 
@@ -160,44 +214,54 @@ function createWindow() {
  * 
  * GÜVENLİK: Bu fonksiyon sadece bir kez çalıştırılmalı - handler birikimi tehlikeli
  */
-let sessionsInitialized = false
+const initializedSessions = new Set()
+
+/**
+ * Belirli bir partition için session ayarlarını yapılandır
+ * @param {string} partitionName 
+ */
+function configureSession(partitionName) {
+    if (initializedSessions.has(partitionName)) return
+
+    try {
+        const ses = partitionName === 'default'
+            ? session.defaultSession
+            : session.fromPartition(partitionName)
+
+        initializedSessions.add(partitionName)
+
+        console.log(`[Sessions] Partition yapılandırılıyor: ${partitionName}`)
+
+        ses.webRequest.onBeforeSendHeaders((details, callback) => {
+            details.requestHeaders['User-Agent'] = CHROME_USER_AGENT
+
+            // Browser header'larını ekle
+            Object.assign(details.requestHeaders, BROWSER_HEADERS)
+
+            // Google domain'leri için ek header'lar
+            if (details.url.includes('google.com') || details.url.includes('gstatic.com') || details.url.includes('googleapis.com')) {
+                Object.assign(details.requestHeaders, GOOGLE_HEADERS)
+            }
+
+            callback({ requestHeaders: details.requestHeaders })
+        })
+
+        // Üçüncü taraf cookie'lere ve özelliklere izin ver
+        ses.setPermissionRequestHandler((webContents, permission, callback) => {
+            const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal']
+            callback(allowedPermissions.includes(permission))
+        })
+    } catch (e) {
+        console.error(`[Sessions] Hata (${partitionName}):`, e)
+    }
+}
 
 function setupSessions() {
-    // Çoklu çağrı koruması - handler birikimini önle
-    if (sessionsInitialized) {
-        console.log('[Sessions] Zaten yapılandırılmış, atlanıyor...')
-        return
-    }
-    sessionsInitialized = true
+    // Default session'ı yapılandır (Sadece bir kez!)
+    configureSession('default')
 
-    const aiSession = session.fromPartition('persist:ai_session')
-
-    // Default session için User-Agent
-    session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
-        details.requestHeaders['User-Agent'] = CHROME_USER_AGENT
-        callback({ requestHeaders: details.requestHeaders })
-    })
-
-    // AI Session için gelişmiş ayarlar
-    aiSession.webRequest.onBeforeSendHeaders((details, callback) => {
-        details.requestHeaders['User-Agent'] = CHROME_USER_AGENT
-
-        // Browser header'larını ekle
-        Object.assign(details.requestHeaders, BROWSER_HEADERS)
-
-        // Google domain'leri için ek header'lar
-        if (details.url.includes('google.com') || details.url.includes('gstatic.com') || details.url.includes('googleapis.com')) {
-            Object.assign(details.requestHeaders, GOOGLE_HEADERS)
-        }
-
-        callback({ requestHeaders: details.requestHeaders })
-    })
-
-    // Üçüncü taraf cookie'lere izin ver
-    aiSession.setPermissionRequestHandler((webContents, permission, callback) => {
-        const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal']
-        callback(allowedPermissions.includes(permission))
-    })
+    // Ana AI session'ı yapılandır
+    configureSession('persist:ai_session')
 }
 
 // ============================================
@@ -206,12 +270,8 @@ function setupSessions() {
 let splashWindow = null
 
 function createSplashWindow() {
-    const splashPath = isDev
-        ? path.join(__dirname, '../../src/renderer/public/splash.html')
-        : path.join(process.resourcesPath, 'dist', 'splash.html')
-
     const finalSplashPath = isDev
-        ? splashPath
+        ? path.join(__dirname, '../../src/renderer/public/splash.html')
         : path.join(app.getAppPath(), 'dist', 'splash.html')
 
     splashWindow = new BrowserWindow({
@@ -255,5 +315,6 @@ module.exports = {
     getMainWindow,
     loadWindowState,
     saveWindowState,
+    configureSession,
     isDev
 }

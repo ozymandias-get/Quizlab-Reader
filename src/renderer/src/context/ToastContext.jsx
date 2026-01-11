@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 
 /**
  * Toast Context - Kullanıcıya bildirim göstermek için
@@ -12,21 +12,44 @@ const ToastContext = createContext(null)
 
 export function ToastProvider({ children }) {
     const [toasts, setToasts] = useState([])
+    const timeoutRefs = useRef({}) // setTimeout cleanup için
 
     const addToast = useCallback((message, type = 'info', duration = 4000) => {
         const id = Date.now() + Math.random()
 
         setToasts(prev => [...prev, { id, message, type }])
 
+        // Önceki timeout'u temizle (eğer varsa)
+        if (timeoutRefs.current[id]) {
+            clearTimeout(timeoutRefs.current[id])
+        }
+
         // Otomatik kaldır
-        setTimeout(() => {
+        timeoutRefs.current[id] = setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id))
+            delete timeoutRefs.current[id]
         }, duration)
 
         return id
     }, [])
 
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            // Tüm timeout'ları temizle
+            Object.values(timeoutRefs.current).forEach(timeoutId => {
+                if (timeoutId) clearTimeout(timeoutId)
+            })
+            timeoutRefs.current = {}
+        }
+    }, [])
+
     const removeToast = useCallback((id) => {
+        // Timeout'u temizle
+        if (timeoutRefs.current[id]) {
+            clearTimeout(timeoutRefs.current[id])
+            delete timeoutRefs.current[id]
+        }
         setToasts(prev => prev.filter(t => t.id !== id))
     }, [])
 

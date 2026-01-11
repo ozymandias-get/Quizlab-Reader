@@ -123,11 +123,14 @@ function ScreenshotTool({ isActive, onCapture, onClose }) {
 
             const croppedImage = canvas.toDataURL('image/png')
             onCapture(croppedImage, rect)
+            
+            // Başarılı - kapat
+            onClose()
         } catch (error) {
             console.error('Ekran görüntüsü alma hatası:', error)
+            // Hata durumunda da kapat - overlay zaten gizli ve kullanıcı tekrar deneyebilir
+            onClose()
         }
-
-        onClose()
     }
 
     if (!isActive) return null

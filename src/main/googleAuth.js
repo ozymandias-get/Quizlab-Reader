@@ -2,12 +2,12 @@
  * Google Auth Module
  * Google login popup, logout ve oturum kontrol işlemleri
  */
-const { BrowserWindow, ipcMain, session } = require('electron')
-const { loadProfiles, saveProfiles, loadCookiesToPartition } = require('./profileManager')
+const { BrowserWindow, ipcMain, session, app } = require('electron')
+const { loadProfiles, saveProfiles, loadCookiesToPartition, validateSessionCookies } = require('./profileManager')
 const { encryptCookies } = require('./cookieEncryption')
+const { getMainWindow } = require('./windowManager')
 const path = require('path')
 const fs = require('fs')
-const { app } = require('electron')
 
 let googleLoginWindow = null
 
@@ -22,11 +22,42 @@ function registerGoogleAuthHandlers() {
             return { success: false, reason: 'already_open' }
         }
 
+        const { CHROME_USER_AGENT, BROWSER_HEADERS, GOOGLE_HEADERS } = require('./browserConfig')
+
         return new Promise((resolve) => {
+            let isLoginSuccess = false
+            let isResolved = false // Promise'in birden fazla kez resolve edilmesini engelle
+            let resolveTimeout = null // setTimeout referansı (cleanup için)
+
+            // Güvenli resolve fonksiyonu (sadece bir kez çalışır)
+            const safeResolve = (value) => {
+                if (isResolved) {
+                    console.warn('[GoogleLogin] Promise zaten resolve edildi, tekrar çağrı yok sayılıyor')
+                    return
+                }
+                isResolved = true
+
+                // Bekleyen timeout'u iptal et
+                if (resolveTimeout) {
+                    clearTimeout(resolveTimeout)
+                    resolveTimeout = null
+                }
+
+                if (googleLoginWindow) {
+                    // Window referansını temizlemeden önce eventleri kaldır
+                    googleLoginWindow.removeAllListeners('closed')
+                    googleLoginWindow.webContents.removeAllListeners('did-fail-load')
+                    googleLoginWindow.webContents.removeAllListeners('did-navigate')
+                }
+                resolve(value)
+            }
+
+            // ...
+
             googleLoginWindow = new BrowserWindow({
                 width: 500,
                 height: 700,
-                parent: BrowserWindow.getAllWindows()[0],
+                parent: getMainWindow(),
                 modal: false,
                 show: true,
                 autoHideMenuBar: true,
@@ -38,37 +69,40 @@ function registerGoogleAuthHandlers() {
                     partition: 'persist:google_auth',
                     webSecurity: true,
                     allowRunningInsecureContent: false,
-                    enableRemoteModule: false
+                    // enableRemoteModule: false // Electron yeni sürümlerinde zaten yok
                 }
             })
 
             const authSession = session.fromPartition('persist:google_auth')
 
-            // Header manipülasyonu
-            authSession.webRequest.onBeforeSendHeaders((details, callback) => {
+            // Header manipülasyonu - Merkezi config'den al
+            // WebRequest listener'larını tek sefer ekleyip pencere kapanınca temizle
+            const handleBeforeSendHeaders = (details, callback) => {
                 const headers = { ...details.requestHeaders }
-                headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-                headers['sec-ch-ua'] = '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"'
-                headers['sec-ch-ua-mobile'] = '?0'
-                headers['sec-ch-ua-platform'] = '"Windows"'
-                headers['sec-ch-ua-platform-version'] = '"15.0.0"'
-                headers['sec-ch-ua-full-version-list'] = '"Not A(Brand";v="99.0.0.0", "Google Chrome";v="121.0.6167.140", "Chromium";v="121.0.6167.140"'
-                headers['Accept-Language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
-                callback({ requestHeaders: headers })
-            })
 
-            authSession.webRequest.onHeadersReceived((details, callback) => {
+                headers['User-Agent'] = CHROME_USER_AGENT
+                Object.assign(headers, BROWSER_HEADERS)
+                Object.assign(headers, GOOGLE_HEADERS)
+
+                callback({ requestHeaders: headers })
+            }
+
+            const handleHeadersReceived = (details, callback) => {
                 callback({ responseHeaders: details.responseHeaders })
-            })
+            }
+
+            authSession.webRequest.onBeforeSendHeaders(handleBeforeSendHeaders)
+            authSession.webRequest.onHeadersReceived(handleHeadersReceived)
 
             googleLoginWindow.loadURL('https://accounts.google.com/signin/v2/identifier?continue=https%3A%2F%2Fgemini.google.com&flowName=GlifWebSignIn&hl=tr')
 
             // Login başarılı kontrolü
             googleLoginWindow.webContents.on('did-navigate', async (event, url) => {
-                console.log('[GoogleLogin] Navigated to:', url)
+                // console.log('[GoogleLogin] Navigated to:', url)
 
                 if (url.includes('gemini.google.com') && !url.includes('accounts.google.com')) {
                     console.log('[GoogleLogin] ✅ Login başarılı! Cookie\'ler aktarılıyor...')
+                    isLoginSuccess = true
 
                     try {
                         const authCookies = await authSession.cookies.get({})
@@ -76,16 +110,29 @@ function registerGoogleAuthHandlers() {
                         // Hedef partition'ı belirle: Aktif profil varsa onu kullan, yoksa default
                         const data = loadProfiles()
                         const activeId = data.activeProfileId
-                        const targetPartition = activeId ? `persist:profile_${activeId}` : 'persist:ai_session'
+                        // Güvenlik: activeId sanitize kontrolü (dosya bozulmuş olabilir)
+                        const sanitizedId = activeId && typeof activeId === 'string' 
+                            ? activeId.replace(/[^a-zA-Z0-9_-]/g, '') 
+                            : null
+                        const targetPartition = sanitizedId ? `persist:profile_${sanitizedId}` : 'persist:ai_session'
 
                         const aiSession = session.fromPartition(targetPartition)
                         console.log(`[GoogleLogin] Cookie'ler hedefe aktarılıyor: ${targetPartition}`)
 
                         const cookiesToTransfer = []
+                        const isAllowedDomain = (domain, allowList) => {
+                            if (!domain || typeof domain !== 'string') return false
+                            const normalized = domain.toLowerCase().replace(/^\./, '')
+                            return allowList.some(allowed => {
+                                const allowedNorm = allowed.toLowerCase().replace(/^\./, '')
+                                return normalized === allowedNorm || normalized.endsWith(`.${allowedNorm}`)
+                            })
+                        }
+
+                        const transferAllowlist = ['google.com', 'youtube.com', 'gstatic.com']
+
                         for (const cookie of authCookies) {
-                            if (cookie.domain.includes('google.com') ||
-                                cookie.domain.includes('youtube.com') ||
-                                cookie.domain.includes('gstatic.com')) {
+                            if (isAllowedDomain(cookie.domain, transferAllowlist)) {
                                 cookiesToTransfer.push(cookie)
                             }
                         }
@@ -101,12 +148,24 @@ function registerGoogleAuthHandlers() {
 
                         if (activeId) {
                             // Mevcut profile cookie'leri güncelle
+                            if (!data.profiles || !Array.isArray(data.profiles)) {
+                                console.warn('[GoogleLogin] Geçersiz profil verisi, yeni profil oluşturuluyor')
+                                data.profiles = []
+                            }
                             const profile = data.profiles.find(p => p.id === activeId)
                             if (profile) {
                                 profile.cookieData = encryptCookies(cookiesToTransfer)
+
+                                // Google Login -> Kesinlikle Gemini
+                                if (!profile.target) profile.target = 'gemini'
+
                                 savedToDisk = saveProfiles(data)
                                 profileName = profile.name
-                                console.log(`[GoogleLogin] 🔐 Cookie'ler profil dosyasına şifreli olarak kaydedildi (${activeId})`)
+                                if (profile.cookieData.encrypted) {
+                                    console.log(`[GoogleLogin] 🔐 Cookie'ler profil dosyasına şifreli olarak kaydedildi (${activeId})`)
+                                } else {
+                                    console.warn(`[GoogleLogin] ⚠️ Şifreleme başarısız - profil güncellendi ama cookie saklanamadı (${activeId})`)
+                                }
                             }
                         } else {
                             // Aktif profil yoksa yeni bir profil oluştur
@@ -114,14 +173,20 @@ function registerGoogleAuthHandlers() {
                                 id: Date.now().toString(),
                                 name: 'Google Hesabı',
                                 createdAt: new Date().toISOString(),
-                                cookieData: encryptCookies(cookiesToTransfer)
+                                cookieData: encryptCookies(cookiesToTransfer),
+                                target: 'gemini' // Yeni Google profili = Gemini
                             }
                             data.profiles.push(newProfile)
                             data.activeProfileId = newProfile.id
                             savedToDisk = saveProfiles(data)
                             profileId = newProfile.id
                             profileName = newProfile.name
-                            console.log(`[GoogleLogin] 🔐 Yeni profil oluşturuldu ve cookie'ler kaydedildi: ${newProfile.name}`)
+                            console.log(`[GoogleLogin] Yeni profil oluşturuldu: ${newProfile.name}`)
+                            if (newProfile.cookieData.encrypted) {
+                                console.log(`[GoogleLogin] 🔐 Cookie'ler şifreli olarak kaydedildi`)
+                            } else {
+                                console.warn(`[GoogleLogin] ⚠️ Şifreleme başarısız - cookie saklanamadı`)
+                            }
                         }
 
                         // Doğrulama: Partition'daki ve diskteki cookie sayısını karşılaştır
@@ -140,11 +205,13 @@ function registerGoogleAuthHandlers() {
                         console.log(`[GoogleLogin]   Profil: ${profileName} (${profileId})`)
                         console.log(`[GoogleLogin] ════════════════════════════════════════`)
 
-                        setTimeout(() => {
+                        // Window kapatılmadan önce kısa bir süre bekle
+                        resolveTimeout = setTimeout(() => {
+                            resolveTimeout = null
                             if (googleLoginWindow && !googleLoginWindow.isDestroyed()) {
                                 googleLoginWindow.close()
                             }
-                            resolve({
+                            safeResolve({
                                 success: true,
                                 stats: {
                                     cookiesTransferred: count,
@@ -157,40 +224,71 @@ function registerGoogleAuthHandlers() {
                         }, 500)
                     } catch (error) {
                         console.error('[GoogleLogin] Cookie aktarım hatası:', error)
-                        resolve({ success: false, reason: 'cookie_transfer_failed', error: error.message })
+                        // Login başarılı oldu ama cookie aktarımı başarısız -> ne yapmalı?
+                        // Kullanıcıya hata dönelim
+                        safeResolve({ success: false, reason: 'cookie_transfer_failed', error: error.message })
+                        if (googleLoginWindow && !googleLoginWindow.isDestroyed()) {
+                            googleLoginWindow.close()
+                        }
                     }
                 }
             })
 
             googleLoginWindow.on('closed', () => {
+                // Bekleyen timeout'u iptal et (eğer varsa)
+                if (resolveTimeout) {
+                    clearTimeout(resolveTimeout)
+                    resolveTimeout = null
+                }
+
                 googleLoginWindow = null
-                resolve({ success: false, reason: 'closed' })
+                // Login başarılı ise (yukarıda resolve edildiyse) bu zaten çalışmaz
+                if (!isLoginSuccess && !isResolved) {
+                    safeResolve({ success: false, reason: 'closed' })
+                }
+
+                // Listener'ları temizle (birikmeyi önle)
+                try {
+                    authSession.webRequest.removeListener('onBeforeSendHeaders', handleBeforeSendHeaders)
+                    authSession.webRequest.removeListener('onHeadersReceived', handleHeadersReceived)
+                } catch (_) { /* ignore cleanup errors */ }
             })
 
             googleLoginWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
                 console.error('[GoogleLogin] Yükleme hatası:', errorCode, errorDescription)
-                if (errorCode !== -3) {
-                    resolve({ success: false, reason: 'load_failed', error: errorDescription })
+                if (errorCode !== -3) { // Aborted
+                    // Yükleme hatası login'i engeller mi? Bazen geçici olabilir.
+                    // Hemen reject etmek yerine loglayalım, kullanıcı kapatırsa 'closed' döner.
+                    // safeResolve({ success: false, reason: 'load_failed', error: errorDescription })
                 }
             })
         })
     })
 
-    // Login durumu kontrol
+    // Login durumu kontrol - Gelişmiş doğrulama
     ipcMain.handle('check-google-login', async () => {
         try {
             const data = loadProfiles()
             const activeId = data.activeProfileId
-            const partition = activeId ? `persist:profile_${activeId}` : 'persist:ai_session'
+            // Güvenlik: activeId sanitize kontrolü (dosya bozulmuş olabilir)
+            const sanitizedId = activeId && typeof activeId === 'string' 
+                ? activeId.replace(/[^a-zA-Z0-9_-]/g, '') 
+                : null
+            const activeProfile = sanitizedId ? data.profiles.find(p => p.id === sanitizedId) : null
+            const partition = sanitizedId ? `persist:profile_${sanitizedId}` : 'persist:ai_session'
 
             const aiSession = session.fromPartition(partition)
-            const cookies = await aiSession.cookies.get({ domain: '.google.com' })
+            const cookies = await aiSession.cookies.get({})
 
-            const hasAuthCookie = cookies.some(c =>
-                c.name === 'SID' || c.name === 'HSID' || c.name === '__Secure-1PSID'
-            )
+            // Gelişmiş doğrulama kullan (süre kontrolü dahil)
+            // Hedef platformu belirtmek önemli (yanlış pozitifleri önler)
+            const target = activeProfile ? activeProfile.target : null
+            const validation = validateSessionCookies(cookies, target)
 
-            return { loggedIn: hasAuthCookie }
+            return {
+                loggedIn: validation.isValid,
+                details: validation.details
+            }
         } catch (error) {
             console.error('[GoogleLogin] Cookie kontrol hatası:', error)
             return { loggedIn: false, error: error.message }
@@ -235,7 +333,11 @@ function registerGoogleAuthHandlers() {
             if (data.profiles && data.profiles.length > 0) {
                 stats.profileCount = data.profiles.length
                 for (const profile of data.profiles) {
-                    const partitionName = `persist:profile_${profile.id}`
+                    // Güvenlik: profile.id sanitize kontrolü (dosya bozulmuş olabilir)
+                    if (!profile.id || typeof profile.id !== 'string') continue
+                    const sanitizedProfileId = profile.id.replace(/[^a-zA-Z0-9_-]/g, '')
+                    if (!sanitizedProfileId) continue
+                    const partitionName = `persist:profile_${sanitizedProfileId}`
                     try {
                         const profileSession = session.fromPartition(partitionName)
                         await profileSession.clearStorageData({ storages: ['cookies', 'localstorage', 'indexdb', 'sessionstorage'] })

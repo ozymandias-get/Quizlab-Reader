@@ -4,12 +4,13 @@
  */
 const { ipcMain, dialog } = require('electron')
 const fs = require('fs')
-const { loadProfiles, saveProfiles, loadCookiesToPartition } = require('./profileManager')
-const { encryptCookies } = require('./cookieEncryption')
+const { loadProfiles, saveProfiles, loadCookiesToPartition, detectProfileTarget } = require('./profileManager')
+const { encryptCookies, isEncryptionAvailable } = require('./cookieEncryption')
 
 // Validation sabitleri
 const MAX_COOKIES = 500 // Maksimum cookie sayısı
 const MAX_JSON_SIZE = 1024 * 1024 // 1MB maksimum JSON boyutu
+const MAX_COOKIE_VALUE_LENGTH = 4096 // Güvenlik: Maksimum cookie value uzunluğu
 const ALLOWED_DOMAINS = [
     // Google servisleri
     '.google.com', 'google.com',
@@ -122,6 +123,16 @@ function validateCookie(cookie) {
  * @returns {{ validCookies: Array, errors: object, stats: object }}
  */
 function validateAndFilterCookies(cookies) {
+    // Array kontrolü
+    if (!Array.isArray(cookies)) {
+        console.warn('[CookieImport] validateAndFilterCookies: cookies is not an array')
+        return {
+            validCookies: [],
+            errors: { domainErrors: [], formatErrors: [] },
+            stats: { skippedDomain: 0, skippedInvalid: cookies ? 1 : 0, total: 0 }
+        }
+    }
+
     const validCookies = []
 
     // Kategorize edilmiş hata listleri - kullanıcıya daha iyi feedback
@@ -139,7 +150,7 @@ function validateAndFilterCookies(cookies) {
             // Sanitize - tehlikeli alanları temizle
             validCookies.push({
                 name: String(cookie.name).slice(0, 256), // Max 256 karakter
-                value: String(cookie.value).slice(0, 4096), // Max 4KB value
+                value: String(cookie.value).slice(0, MAX_COOKIE_VALUE_LENGTH), // Güvenli uzunluk limiti
                 domain: String(cookie.domain).slice(0, 256),
                 path: cookie.path || '/',
                 secure: Boolean(cookie.secure),
@@ -259,15 +270,36 @@ function registerCookieImportHandlers() {
             // Aktif profili bul ve partition'ı belirle
             const data = loadProfiles()
             const activeId = data.activeProfileId
-            const partition = activeId ? `persist:profile_${activeId}` : 'persist:ai_session'
+            // Güvenlik: activeId sanitize kontrolü (dosya bozulmuş olabilir)
+            const sanitizedId = activeId && typeof activeId === 'string'
+                ? activeId.replace(/[^a-zA-Z0-9_-]/g, '')
+                : null
+            const partition = sanitizedId ? `persist:profile_${sanitizedId}` : 'persist:ai_session'
 
             // Profil varsa yedeği şifreli olarak güncelle
             if (activeId) {
+                if (!data.profiles || !Array.isArray(data.profiles)) {
+                    console.warn('[CookieImport] Geçersiz profil verisi')
+                    data.profiles = []
+                }
                 const profile = data.profiles.find(p => p.id === activeId)
                 if (profile) {
                     profile.cookieData = encryptCookies(validCookies)
+
+                    // Profilin platform bilgisini güncelle (import edilen cookie'lere göre)
+                    const { target } = detectProfileTarget(validCookies)
+                    if (target) {
+                        profile.target = target
+                        console.log(`[CookieImport] Profil hedefi güncellendi: ${profile.name} -> ${target}`)
+                    }
+
                     saveProfiles(data)
-                    console.log('[CookieImport] 🔐 Cookie yedeği şifreli olarak güncellendi')
+
+                    if (profile.cookieData.encrypted) {
+                        console.log('[CookieImport] 🔐 Cookie yedeği şifreli olarak güncellendi')
+                    } else {
+                        console.warn('[CookieImport] ⚠️ Şifreleme başarısız - yedeklenemedi (güvenlik)')
+                    }
                 }
             }
 
@@ -351,13 +383,29 @@ function registerCookieImportHandlers() {
             // Aktif profili bul ve partition'ı belirle
             const data = loadProfiles()
             const activeId = data.activeProfileId
-            const partition = activeId ? `persist:profile_${activeId}` : 'persist:ai_session'
+            // Güvenlik: activeId sanitize kontrolü (dosya bozulmuş olabilir)
+            const sanitizedId = activeId && typeof activeId === 'string'
+                ? activeId.replace(/[^a-zA-Z0-9_-]/g, '')
+                : null
+            const partition = sanitizedId ? `persist:profile_${sanitizedId}` : 'persist:ai_session'
 
             // Profil varsa yedeği şifreli olarak güncelle
             if (activeId) {
+                if (!data.profiles || !Array.isArray(data.profiles)) {
+                    console.warn('[CookieImport] Geçersiz profil verisi (dosya)')
+                    data.profiles = []
+                }
                 const profile = data.profiles.find(p => p.id === activeId)
                 if (profile) {
                     profile.cookieData = encryptCookies(validCookies)
+
+                    // Profilin platform bilgisini güncelle (import edilen cookie'lere göre)
+                    const { target } = detectProfileTarget(validCookies)
+                    if (target) {
+                        profile.target = target
+                        console.log(`[CookieImport] Profil hedefi güncellendi (dosya): ${profile.name} -> ${target}`)
+                    }
+
                     saveProfiles(data)
                     console.log('[CookieImport] 🔐 Cookie yedeği şifreli olarak güncellendi (dosya import)')
                 }

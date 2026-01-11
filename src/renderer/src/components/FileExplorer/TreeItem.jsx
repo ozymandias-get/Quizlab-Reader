@@ -111,7 +111,13 @@ function TreeItem({ item, level = 0, onFileClick, onDeleteItem, onDragComplete }
 
             if (!jsonData || jsonData.trim() === '') return
 
-            const data = JSON.parse(jsonData)
+            let data
+            try {
+                data = JSON.parse(jsonData)
+            } catch (err) {
+                console.warn('[TreeItem] JSON parse hatası:', err)
+                return
+            }
 
             if (!data || !data.id) return
 

@@ -90,7 +90,16 @@ function App() {
 
     // FileExplorer'dan dosya seçildiğinde
     const handleFileSelect = useCallback(async (file) => {
-        if (file.type !== 'file') return
+        // Sadece dosyalar açılabilir, klasörler değil
+        if (file.type !== 'file') {
+            // Klasör seçildi - kullanıcıya bilgi ver
+            if (file.type === 'folder') {
+                // Klasörler genişletilir, açılmaz - bu bir hata değil
+                return
+            }
+            showWarning(t('error_invalid_file_type') || 'Geçersiz dosya türü')
+            return
+        }
 
         // 1. Dosya yolu varsa (yerel dosya), öncelikle stream URL'i yenilemeyi dene
         // Bu, uygulama yeniden başlatıldığında expired olan stream URL'leri (local-pdf://) yeniler
@@ -141,13 +150,16 @@ function App() {
         if (!selectedText) return
         const result = await sendTextToAI(selectedText)
 
-        // Başarılı durumu kontrol et
-        if (result === true) {
+        // Tutarlı obje dönüşü: { success: boolean, error?: string }
+        if (result.success) {
             setSelectedText('')
             setSelectionPosition(null)
-        } else if (result?.error === 'webview_not_ready') {
+        } else if (result.error === 'webview_not_ready') {
             // Webview henüz hazır değil - sayfa yükleniyor
             showWarning(t('error_webview_not_ready') || 'AI sayfası henüz yüklenmiyor. Lütfen sayfanın yüklenmesini bekleyin.')
+        } else if (result.error === 'input_not_found') {
+            // Input alanı bulunamadı
+            showWarning(t('error_input_not_found') || 'AI giriş alanı bulunamadı. Sayfayı yenileyin.')
         } else {
             // Diğer hatalar
             showWarning(t('error_send_failed') || 'Metin gönderilemedi. AI sayfasının yüklendiğinden emin olun.')

@@ -394,8 +394,8 @@ function ProfileList({
                     <div className="flex items-center gap-1.5">
                         <button
                             onClick={() => handleSwitchProfile(profile.id)}
-                            disabled={isSwitchingProfile === profile.id}
-                            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 disabled:opacity-50"
+                            disabled={isSwitchingProfile !== null}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{
                                 background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)',
                                 border: '1px solid rgba(99, 102, 241, 0.25)',

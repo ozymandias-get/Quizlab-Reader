@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.2.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Electron-28.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/Vite-5.0.10-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
@@ -34,7 +34,8 @@
 | 📄 **PDF Viewer** | Full-featured PDF viewer with zoom, navigation, search, and text selection |
 | 🤖 **AI Integration** | Built-in support for ChatGPT and Google Gemini |
 | 👤 **Profile System** | Multiple account profiles with encrypted cookie storage |
-| 🔐 **Secure Storage** | OS-level encryption (Windows DPAPI) for sensitive data |
+| � **Session Sync** | **NEW!** Auto-sync keeps your sessions alive even after restarts |
+| �🔐 **Secure Storage** | OS-level encryption (Windows DPAPI) for sensitive data |
 | ✂️ **Text Selection** | Select text from PDF and send it directly to AI with one click |
 | 📸 **Screenshot Tool** | Capture any area of the PDF and send it to AI for analysis |
 | 🔄 **Auto-Send Mode** | Automatically send selected text to AI |
@@ -45,7 +46,13 @@
 
 ---
 
-## 🆕 What's New in v2.1.0
+## 🆕 What's New in v2.2.0
+
+### 🔄 Persistent Session Synchronization
+- **Auto-Sync Engine:** Automatically synchronizes session cookies to encrypted storage every 5 minutes.
+- **Race Condition Protection:** Smart locking ensures no data loss during profile switching or rapid changes.
+- **Secure Exit:** "Graceful Shutdown" mechanism waits for the final session backup before closing the app.
+- **Fix:** Resolved the issue where Google sessions would expire or logout after restarting the application.
 
 ### Platform Detection System
 - 🔍 Automatic platform detection from cookie domains (Gemini/ChatGPT)

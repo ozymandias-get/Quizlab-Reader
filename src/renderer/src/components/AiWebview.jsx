@@ -33,6 +33,9 @@ function AiWebview({ isResizing }) {
 
     // Crash recovery için retry sayacı
     const crashRetryCount = useRef({})
+    
+    // setTimeout cleanup için ref
+    const timeoutRefs = useRef({})
 
     // Her AI için ayrı loading ve error state'leri
     const [loadingStates, setLoadingStates] = useState({})
@@ -56,30 +59,58 @@ function AiWebview({ isResizing }) {
     // ChatGPT cookie olmadan da çalışır, Plus özellikleri için login gerekebilir ama zorunlu değil
     useEffect(() => {
         const initializeSession = async () => {
-            // Aktif profili kontrol et ve partition'ı ayarla
-            if (window.electronAPI?.getProfiles) {
-                try {
-                    const profileData = await window.electronAPI.getProfiles()
-                    if (profileData.success && profileData.activeProfileId) {
-                        const partition = `persist:profile_${profileData.activeProfileId}`
+            let profileData = null
+
+            try {
+                if (window.electronAPI?.getProfiles) {
+                    profileData = await window.electronAPI.getProfiles()
+
+                    if (profileData?.success && profileData.activeProfileId) {
+                        // Güvenlik: activeProfileId sanitize kontrolü (server'dan geldiği için güvenli ama yine de kontrol)
+                        const activeId = String(profileData.activeProfileId).replace(/[^a-zA-Z0-9_-]/g, '')
+                        if (!activeId) {
+                            console.warn('[AiWebview] Geçersiz activeProfileId, varsayılan partition kullanılıyor')
+                            return
+                        }
+                        const partition = `persist:profile_${activeId}`
                         setCurrentPartition(partition)
                         console.log('[AiWebview] Aktif partition:', partition)
+
+                        const activeProfile = profileData.profiles.find(p => p.id === profileData.activeProfileId)
+                        if (activeProfile?.target) {
+                            setLoginStates(prev => ({ ...prev, [activeProfile.target]: true }))
+                        }
                     }
-                } catch (e) {
-                    console.warn('[AiWebview] Profil bilgisi alınamadı:', e)
                 }
+            } catch (e) {
+                console.warn('[AiWebview] Profil bilgisi alınamadı:', e)
             }
 
-            // Login durumunu kontrol et
-            if (window.electronAPI?.checkGoogleLogin) {
-                const googleResult = await window.electronAPI.checkGoogleLogin()
-                setLoginStates(prev => ({
-                    ...prev,
-                    gemini: googleResult.loggedIn
-                }))
+            // Race condition check: Startup restore tamamlandı mı?
+            // Eğer biz mount olmadan önce restore bittiyse event'i kaçırmış olabiliriz.
+            try {
+                if (window.electronAPI?.getStartupStatus) {
+                    const status = await window.electronAPI.getStartupStatus()
+                    if (status && status.complete && status.success) {
+                        console.log('[AiWebview] Startup restore zaten tamamlanmış:', status)
+
+                        // Profil bilgisi önceden alınamadıysa tekrar dene
+                        if (!profileData && window.electronAPI?.getProfiles) {
+                            profileData = await window.electronAPI.getProfiles()
+                        }
+
+                        if (profileData?.success && profileData.activeProfileId) {
+                            const activeProfile = profileData.profiles.find(p => p.id === profileData.activeProfileId)
+                            if (activeProfile?.target) {
+                                console.log('[AiWebview] Login state güncelleniyor (startup check):', activeProfile.target)
+                                setLoginStates(prev => ({ ...prev, [activeProfile.target]: true }))
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[AiWebview] Startup status alınamadı:', e)
             }
-            // ChatGPT için login kontrolü yapmıyoruz - cookie olmadan da çalışır
-            // undefined bırakarak overlay göstermiyoruz
         }
         initializeSession()
     }, [])
@@ -90,12 +121,19 @@ function AiWebview({ isResizing }) {
             const { action } = event.detail || {}
 
             if (action === 'reset' || action === 'profile-deleted') {
-                // Cookie'ler sıfırlandı veya profil silindi - login durumunu false yap
+                const { partition, wasActiveProfile } = event.detail || {}
+
+                // Profil silindiyse ve aktif profil değilse - login state değiştirme
+                if (action === 'profile-deleted' && wasActiveProfile === false) {
+                    console.log('[AiWebview] Aktif olmayan profil silindi, login state değiştirilmedi')
+                    return
+                }
+
+                // Cookie'ler sıfırlandı veya AKTİF profil silindi - login durumunu false yap
                 // NOT: Boş obje {} yerine false kullanarak overlay gösterilmesini sağlıyoruz
                 setLoginStates({ gemini: false, chatgpt: false })
 
                 // Partition güncelle
-                const { partition } = event.detail || {}
                 if (partition) {
                     setCurrentPartition(partition)
                     console.log('[AiWebview] Partition güncellendi (reset/delete):', partition)
@@ -151,37 +189,134 @@ function AiWebview({ isResizing }) {
                 }
             } else if (action === 'profile-switch') {
                 // Profile geçildi - partition'ı güncelle
-                const { partition, profileId } = event.detail || {}
+                const { partition, profileId, sessionExpired } = event.detail || {}
 
                 if (partition) {
-                    console.log('[AiWebview] Profile geçildi, yeni partition:', partition)
+                    console.log('[AiWebview] Profile geçildi, yeni partition:', partition, 'sessionExpired:', sessionExpired)
                     setCurrentPartition(partition)
-                    // Login durumunu undefined yap - overlay gösterilmeyecek
-                    // NOT: false yapılırsa login overlay gösterilir!
-                    setLoginStates({})
+
+                    // Oturum süresi dolmuşsa hemen login overlay göster
+                    if (sessionExpired) {
+                        setLoginStates({ gemini: false, chatgpt: false })
+                    } else {
+                        // Login durumunu undefined yap - overlay gösterilmeyecek
+                        setLoginStates({})
+                    }
                 } else if (profileId) {
                     // Partition bilgisi yoksa profileId'den oluştur
-                    const newPartition = `persist:profile_${profileId}`
+                    // Güvenlik: profileId sanitize kontrolü
+                    const sanitizedId = String(profileId).replace(/[^a-zA-Z0-9_-]/g, '')
+                    if (!sanitizedId) {
+                        console.warn('[AiWebview] Geçersiz profileId, varsayılan partition kullanılıyor')
+                        return
+                    }
+                    const newPartition = `persist:profile_${sanitizedId}`
                     console.log('[AiWebview] Profile geçildi (id\' den türetildi):', newPartition)
                     setCurrentPartition(newPartition)
                     setLoginStates({})
                 }
 
-                // Login durumlarını hemen kontrol et (hızlı geçiş için)
-                setTimeout(async () => {
-                    if (window.electronAPI?.checkGoogleLogin) {
-                        const googleResult = await window.electronAPI.checkGoogleLogin()
-                        setLoginStates(prev => ({
-                            ...prev,
-                            gemini: googleResult.loggedIn
-                        }))
+                // Oturum süresi dolmamışsa login durumlarını kontrol et
+                if (!sessionExpired) {
+                    // Önceki timeout'u temizle
+                    if (timeoutRefs.current['checkGoogleLogin']) {
+                        clearTimeout(timeoutRefs.current['checkGoogleLogin'])
                     }
-                }, 200)
+                    
+                    timeoutRefs.current['checkGoogleLogin'] = setTimeout(async () => {
+                        if (window.electronAPI?.checkGoogleLogin) {
+                            const googleResult = await window.electronAPI.checkGoogleLogin()
+                            setLoginStates(prev => ({
+                                ...prev,
+                                gemini: googleResult.loggedIn
+                            }))
+                        }
+                        timeoutRefs.current['checkGoogleLogin'] = null
+                    }, 500) // Biraz daha uzun bekle (partition switch ve cookie yükleme için)
+                }
             }
         }
 
         window.addEventListener('cookies-changed', handleCookiesChanged)
-        return () => window.removeEventListener('cookies-changed', handleCookiesChanged)
+        return () => {
+            window.removeEventListener('cookies-changed', handleCookiesChanged)
+            // Tüm timeout'ları temizle
+            Object.values(timeoutRefs.current).forEach(timeoutId => {
+                if (timeoutId) clearTimeout(timeoutId)
+            })
+            timeoutRefs.current = {}
+        }
+    }, [])
+
+    // Oturum süresi dolduğunda main process'ten gelen bildirimi dinle
+    useEffect(() => {
+        if (!window.electronAPI?.onSessionExpired) return
+
+        const cleanup = window.electronAPI.onSessionExpired((data) => {
+            console.log('[AiWebview] Session expired event alındı:', data)
+
+            // Login overlay'ı göster
+            setLoginStates({ gemini: false, chatgpt: false })
+
+            // Default partition'a dön
+            setCurrentPartition('persist:ai_session')
+
+            // Kullanıcıya bildir
+            if (data.profileName) {
+                showWarning(`"${data.profileName}" profilinin oturumu sona erdi. Lütfen tekrar giriş yapın.`)
+            }
+        })
+
+        return cleanup
+    }, [showWarning])
+
+    // Cookie restore tamamlandığında (Startup)
+    useEffect(() => {
+        if (!window.electronAPI?.onCookiesRestored) return
+
+        let isMounted = true // Unmount kontrolü için flag
+        let timeoutId = null
+
+        const cleanup = window.electronAPI.onCookiesRestored(async (data) => {
+            if (!isMounted) return // Component unmount olduysa dur
+
+            console.log('[AiWebview] Cookies restored event alındı:', data)
+            const { target } = data
+
+            // Target belirtilmişse login durumunu güncelle
+            if (target && isMounted) {
+                setLoginStates(prev => ({ ...prev, [target]: true }))
+            }
+
+            // Webview'ları reload et (cookie'lerin geçerli olması için)
+            // Kısa bir gecikme ile reload yap (partition persistence için)
+            timeoutId = setTimeout(() => {
+                if (!isMounted) return // Component unmount olduysa dur
+
+                Object.keys(webviewRefs.current).forEach(aiId => {
+                    const webview = webviewRefs.current[aiId]
+                    if (webview && typeof webview.reload === 'function') {
+                        webview.reload()
+                        console.log(`[AiWebview] Restore sonrası reload: ${aiId}`)
+                    }
+                })
+
+                // Login durumunu tekrar teyit et (özellikle Gemini için)
+                if (isMounted && window.electronAPI?.checkGoogleLogin) {
+                    window.electronAPI.checkGoogleLogin().then(res => {
+                        if (isMounted) {
+                            setLoginStates(prev => ({ ...prev, gemini: res.loggedIn }))
+                        }
+                    })
+                }
+            }, 500)
+        })
+
+        return () => {
+            isMounted = false // Cleanup: unmount flag'i
+            if (timeoutId) clearTimeout(timeoutId)
+            if (cleanup) cleanup()
+        }
     }, [])
 
     // Cookie import modal state
@@ -237,7 +372,8 @@ function AiWebview({ isResizing }) {
         if (currentAI && !initializedWebviews.has(currentAI)) {
             setInitializedWebviews(prev => new Set([...prev, currentAI]))
         }
-    }, [currentAI, initializedWebviews])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentAI]) // initializedWebviews dependency'den çıkarıldı - infinite loop önleme
 
     // Webview event handler'ları oluştur
     const createEventHandlers = useCallback((aiId) => {
@@ -344,12 +480,19 @@ function AiWebview({ isResizing }) {
                     crashRetryCount.current[aiId] = retries + 1
                     showWarning(t('webview_crashed_retrying') || `${aiSites[aiId]?.displayName || 'AI'} çöktü, yeniden yükleniyor...`)
 
+                    // Önceki timeout'u temizle (eğer varsa)
+                    const timeoutKey = `crash-retry-${aiId}`
+                    if (timeoutRefs.current[timeoutKey]) {
+                        clearTimeout(timeoutRefs.current[timeoutKey])
+                    }
+
                     // Kısa gecikme ile reload
-                    setTimeout(() => {
+                    timeoutRefs.current[timeoutKey] = setTimeout(() => {
                         const webview = webviewRefs.current[aiId]
                         if (webview) {
                             webview.reload()
                         }
+                        timeoutRefs.current[timeoutKey] = null
                     }, 1000)
                 } else {
                     // Çok fazla çökme - kullanıcıya hata göster
@@ -448,6 +591,11 @@ function AiWebview({ isResizing }) {
                     webview.removeEventListener('responsive', handlers.handleResponsive)
                 }
             })
+            // Tüm timeout'ları temizle
+            Object.values(timeoutRefs.current).forEach(timeoutId => {
+                if (timeoutId) clearTimeout(timeoutId)
+            })
+            timeoutRefs.current = {}
         }
     }, [])
 

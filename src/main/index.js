@@ -14,10 +14,10 @@
 const { app, BrowserWindow, dialog } = require('electron')
 
 // Modülleri import et
-const { registerPdfScheme, registerPdfProtocol, registerPdfHandlers, startPdfCleanupInterval, stopPdfCleanupInterval } = require('./pdfProtocol')
-const { createWindow, createSplashWindow, getSplashWindow, isDev } = require('./windowManager')
+const { registerPdfScheme, registerPdfProtocol, registerPdfHandlers, startPdfCleanupInterval, stopPdfCleanupInterval, clearAllPdfPaths } = require('./pdfProtocol')
+const { createWindow, createSplashWindow, getSplashWindow, getMainWindow, isDev } = require('./windowManager')
 const { registerGoogleAuthHandlers } = require('./googleAuth')
-const { registerProfileHandlers, restoreActiveProfileCookies } = require('./profileManager')
+const { registerProfileHandlers, restoreActiveProfileCookies, startCookieSync, stopCookieSync } = require('./profileManager')
 const { registerCookieImportHandlers } = require('./cookieImport')
 const { registerGeneralHandlers } = require('./ipcHandlers')
 const { initUpdater } = require('./updater')
@@ -34,7 +34,7 @@ if (!isDev) {
         app.quit()
     } else {
         app.on('second-instance', (event, commandLine, workingDirectory) => {
-            const mainWindow = BrowserWindow.getAllWindows()[0]
+            const mainWindow = getMainWindow()
             if (mainWindow) {
                 if (mainWindow.isMinimized()) {
                     mainWindow.restore()
@@ -77,36 +77,53 @@ app.whenReady().then(async () => {
     // 3. PDF path temizlik interval'ini başlat (bellek optimizasyonu)
     startPdfCleanupInterval()
 
-    // 3. Ağır işlemleri başlat (Cookie Restore) - Splash gösterilirken arka planda çalışsın
-    const cookieRestorePromise = restoreActiveProfileCookies()
-
-    // 4. Main Window'u oluştur (Biraz gecikmeli)
+    // 4. Main Window'u oluştur
     setTimeout(async () => {
-        // Main window oluşturulmadan önce cookie'lerin yüklendiğinden emin ol
-        // (Webview hemen session'a erişeceği için bu önemlidir)
-        await cookieRestorePromise
-
         const mainWindow = createWindow()
 
-        // Auto updater'ı başlat (UI ile bağlantılı olabilir)
-        initUpdater()
+        // 5. Cookie restore işlemi - UI gösterilmeden önce tamamlanır
+        // Kullanıcı etkileşimi öncesi oturumun hazır olduğundan emin olur
+        mainWindow.once('ready-to-show', async () => {
+            try {
+                const restoreResult = await restoreActiveProfileCookies(mainWindow)
 
-        mainWindow.once('ready-to-show', () => {
-            // Main window hazır olduğunda splash'i kapat ve göster
-            setTimeout(() => {
+                if (restoreResult.sessionExpired) {
+                    console.log('[App] Oturum süresi dolmuş, yeniden giriş bekleniyor. (Profil korundu)')
+                }
+            } catch (err) {
+                console.error('[App] Cookie restore hatası:', err)
+            } finally {
+                // Splash'i kapat ve main window'u göster
                 const splashWindow = getSplashWindow()
                 if (splashWindow) {
                     splashWindow.close()
                 }
                 mainWindow.show()
                 mainWindow.focus()
-            }, 600)
+            }
         })
+
+        // Auto updater'ı başlat
+        initUpdater()
+
+        // Cookie senkronizasyonunu başlat
+        startCookieSync()
     }, 100)
 
-    app.on('activate', () => {
+    app.on('activate', async () => {
         if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow()
+            const mw = createWindow()
+            mw.show()
+
+            // Cookie restore işlemini yap
+            try {
+                const restoreResult = await restoreActiveProfileCookies(mw)
+                if (restoreResult.sessionExpired) {
+                    console.log('[App] Oturum süresi dolmuş (Activate).')
+                }
+            } catch (err) {
+                console.error('[App] Cookie restore hatası (Activate):', err)
+            }
         }
     })
 })
@@ -114,9 +131,29 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
     // PDF cleanup interval'ini durdur
     stopPdfCleanupInterval()
+    clearAllPdfPaths()
 
     if (process.platform !== 'darwin') {
         app.quit()
+    }
+})
+
+let isQuitting = false
+
+app.on('before-quit', async (event) => {
+    if (!isQuitting) {
+        event.preventDefault() // Kapanmayı durdur
+
+        console.log('[App] Kapanış öncesi son yedekleme yapılıyor...')
+
+        // Timeout mekanizması: Maksimum 3 saniye bekle
+        const syncOp = stopCookieSync()
+        const timeoutOp = new Promise(resolve => setTimeout(resolve, 3000))
+
+        await Promise.race([syncOp, timeoutOp])
+
+        isQuitting = true
+        app.quit() // Tekrar tetikle (artık isQuitting true)
     }
 })
 
@@ -127,12 +164,15 @@ process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error)
 
     if (app.isReady()) {
+        // Güvenlik: Hassas bilgi sızıntısını önle - sadece genel hata mesajı göster
+        const safeMessage = error.message || 'Bilinmeyen hata'
+        // Stack trace'i sadece console'a yaz, kullanıcıya gösterme
         dialog.showErrorBox(
             'Beklenmeyen Hata',
             `Uygulama beklenmeyen bir hata ile karşılaştı.\n\n` +
-            `Hata: ${error.message}\n\n` +
-            `Detay: ${error.stack || 'Detay yok'}\n\n` +
-            `Uygulama çalışmaya devam edebilir ancak bazı özellikler etkilenmiş olabilir.`
+            `Hata: ${safeMessage}\n\n` +
+            `Uygulama çalışmaya devam edebilir ancak bazı özellikler etkilenmiş olabilir.\n\n` +
+            `Detaylı bilgi için konsol loglarını kontrol edin.`
         )
     }
 })
@@ -141,10 +181,21 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason)
 
     if (app.isReady()) {
+        // Güvenlik: Hassas bilgi sızıntısını önle
+        let safeReason = 'Bilinmeyen hata'
+        if (reason instanceof Error) {
+            safeReason = reason.message || 'Bilinmeyen hata'
+        } else if (typeof reason === 'string') {
+            // String uzunluğunu sınırla (DoS önleme)
+            safeReason = reason.slice(0, 200)
+        } else {
+            safeReason = String(reason).slice(0, 200)
+        }
+
         dialog.showErrorBox(
             'İşlenmeyen Promise Hatası',
             `Bir async işlem başarısız oldu.\n\n` +
-            `Sebep: ${reason instanceof Error ? reason.message : String(reason)}`
+            `Sebep: ${safeReason}`
         )
     }
 })

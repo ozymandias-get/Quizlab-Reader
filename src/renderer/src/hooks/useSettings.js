@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
 
@@ -21,6 +21,10 @@ export function useSettings(isOpen) {
 
     // Uygulama versiyonu
     const [appVersion, setAppVersion] = useState('1.0.0')
+
+    // setTimeout referansları için ref (cleanup için)
+    const resetTimeoutsRef = useRef([])
+    const isMountedRef = useRef(true) // Unmount kontrolü için flag
 
     // Update status - AppContext'ten türetilir
     // Durumlar: 'idle' (başlangıç), 'checking' (kontrol ediliyor), 
@@ -53,6 +57,10 @@ export function useSettings(isOpen) {
     const [isCreatingProfile, setIsCreatingProfile] = useState(false)
     const [isSwitchingProfile, setIsSwitchingProfile] = useState(null)
 
+    // Delete confirmation modal state
+    const [deleteConfirmation, setDeleteConfirmation] = useState(null) // { profileId, profileName }
+    const [isDeletingProfile, setIsDeletingProfile] = useState(false)
+
     // Uygulama sürümünü al
     useEffect(() => {
         if (window.electronAPI?.getAppVersion) {
@@ -68,6 +76,20 @@ export function useSettings(isOpen) {
             loadProfilesList()
         }
     }, [isOpen])
+
+    // Global event listener for sync (BottomBar ve SettingsModal arası senkronizasyon)
+    useEffect(() => {
+        const handleCookiesChanged = (event) => {
+            const { action } = event.detail || {}
+            // Profil listesini veya aktif profili etkileyen eylemler
+            if (['profile-switch', 'profile-deleted', 'profile-created', 'profile-renamed'].includes(action)) {
+                loadProfilesList()
+            }
+        }
+        window.addEventListener('cookies-changed', handleCookiesChanged)
+        return () => window.removeEventListener('cookies-changed', handleCookiesChanged)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // loadProfilesList dependency olarak eklenemez çünkü her render'da yeniden oluşturuluyor
 
     // Profilleri yükle
     const loadProfilesList = async () => {
@@ -112,6 +134,12 @@ export function useSettings(isOpen) {
             return
         }
 
+        if (isResettingCookies) return
+
+        // Önceki timeout'ları temizle (eğer varsa)
+        resetTimeoutsRef.current.forEach(timeout => clearTimeout(timeout))
+        resetTimeoutsRef.current = []
+
         setIsResettingCookies(true)
         setCookieResetSuccess(false)
         setCookieResetError(null)
@@ -119,6 +147,9 @@ export function useSettings(isOpen) {
 
         try {
             const result = await window.electronAPI.googleLogout()
+
+            // Unmount kontrolü - component unmount olduysa state update yapma
+            if (!isMountedRef.current) return
 
             if (result.success) {
                 setCookieResetSuccess(true)
@@ -135,10 +166,13 @@ export function useSettings(isOpen) {
                 loadProfilesList()
 
                 // 5 saniye sonra success mesajını kaldır (stats görülebilsin)
-                setTimeout(() => {
-                    setCookieResetSuccess(false)
-                    setResetStats(null)
+                const successTimeout = setTimeout(() => {
+                    if (isMountedRef.current) {
+                        setCookieResetSuccess(false)
+                        setResetStats(null)
+                    }
                 }, 5000)
+                resetTimeoutsRef.current.push(successTimeout)
             } else {
                 // HATA: Kullanıcıya göster, event dispatch ETME
                 const errorMsg = result.error || 'Cookie sıfırlama başarısız oldu'
@@ -152,28 +186,50 @@ export function useSettings(isOpen) {
                 }
 
                 // 8 saniye sonra hata mesajını kaldır
-                setTimeout(() => {
-                    setCookieResetError(null)
-                    setResetStats(null)
+                const errorTimeout = setTimeout(() => {
+                    if (isMountedRef.current) {
+                        setCookieResetError(null)
+                        setResetStats(null)
+                    }
                 }, 8000)
+                resetTimeoutsRef.current.push(errorTimeout)
             }
         } catch (error) {
-            // Exception: Kullanıcıya göster
+            // Exception: Kullanıcıya göster (sadece component mount ise)
+            if (!isMountedRef.current) return
+
             const errorMsg = error.message || 'Beklenmeyen bir hata oluştu'
             console.error('[Settings] Cookie reset error:', error)
             setCookieResetError(errorMsg)
             showError(`Cookie sıfırlama hatası: ${errorMsg}`)
 
-            setTimeout(() => {
-                setCookieResetError(null)
+            const errorTimeout = setTimeout(() => {
+                if (isMountedRef.current) {
+                    setCookieResetError(null)
+                }
             }, 8000)
+            resetTimeoutsRef.current.push(errorTimeout)
         } finally {
-            setIsResettingCookies(false)
+            if (isMountedRef.current) {
+                setIsResettingCookies(false)
+            }
         }
     }
 
+    // Component unmount olduğunda timeout'ları temizle ve flag'i güncelle
+    useEffect(() => {
+        isMountedRef.current = true
+        return () => {
+            isMountedRef.current = false // Unmount flag'i
+            resetTimeoutsRef.current.forEach(timeout => clearTimeout(timeout))
+            resetTimeoutsRef.current = []
+        }
+    }, [])
+
     // Yeni profil oluştur
     const handleCreateProfile = async () => {
+        if (isCreatingProfile) return
+
         if (!newProfileName.trim()) {
             showWarning('Lütfen profil adı girin')
             return
@@ -191,7 +247,7 @@ export function useSettings(isOpen) {
             if (result.success) {
                 setNewProfileName('')
                 setNewProfileCookieJson('')
-                loadProfilesList()
+                await loadProfilesList()
 
                 // Platform bilgisini kullanıcıya göster
                 const platformName = result.target === 'chatgpt' ? 'ChatGPT' :
@@ -241,7 +297,7 @@ export function useSettings(isOpen) {
 
     // Profil geçişi
     const handleSwitchProfile = async (profileId) => {
-        if (!window.electronAPI?.switchProfile || profileId === activeProfileId) return
+        if (!window.electronAPI?.switchProfile || profileId === activeProfileId || isSwitchingProfile) return
 
         setIsSwitchingProfile(profileId)
         try {
@@ -249,48 +305,88 @@ export function useSettings(isOpen) {
             if (result.success) {
                 setActiveProfileId(profileId)
 
+                // Oturum süresi dolmuşsa kullanıcıyı bilgilendir
+                if (result.sessionExpired) {
+                    showWarning('Bu profilin oturumu sona ermiş. Lütfen yeniden giriş yapın.')
+                }
+
                 window.dispatchEvent(new CustomEvent('cookies-changed', {
                     detail: {
                         action: 'profile-switch',
                         profileId,
-                        partition: result.partition
+                        partition: result.partition,
+                        sessionExpired: result.sessionExpired // UI'a oturum durumunu bildir
                     }
                 }))
+                return true
             } else {
-                alert(result.error || 'Profile geçilemedi')
+                showError(result.error || 'Profile geçilemedi')
+                return false
             }
         } catch (e) {
             console.error('[Settings] Profil geçiş hatası:', e)
+            showError('Profil geçiş hatası: ' + e.message)
+            return false
         } finally {
             setIsSwitchingProfile(null)
         }
     }
 
-    // Profil silme
-    const handleDeleteProfile = async (profileId) => {
+    // Profil silme - onay modalını aç
+    const handleDeleteProfile = (profileId) => {
         if (!window.electronAPI?.deleteProfile) return
 
         const profile = profiles.find(p => p.id === profileId)
-        if (!confirm(`"${profile?.name}" profilini silmek istediğinizden emin misiniz?`)) return
+        setDeleteConfirmation({
+            profileId,
+            profileName: profile?.name || 'Profil'
+        })
+    }
+
+    // Silme işlemini onayla
+    const confirmDeleteProfile = async () => {
+        if (!deleteConfirmation || isDeletingProfile) return
+
+        const { profileId } = deleteConfirmation
+        setIsDeletingProfile(true)
+        // Modalı hemen kapatma, işlem bitince kapat
+        // setDeleteConfirmation(null) -> Bunu success sonrasına veya finally'ye taşıyalım, 
+        // ancak kullanıcı silinirken modalı görmeli ki beklediğini anlasın.
+        // Fakat mevcut UI tasarımında modal bir "onay" modalı.
+        // Loading state bu modal üzerinde gösterilecek.
 
         try {
             const result = await window.electronAPI.deleteProfile(profileId)
             if (result.success) {
-                loadProfilesList()
+                await loadProfilesList()
+                showSuccess('Profil başarıyla silindi')
 
                 window.dispatchEvent(new CustomEvent('cookies-changed', {
                     detail: {
                         action: 'profile-deleted',
-                        partition: result.newPartition
+                        partition: result.newPartition,
+                        wasActiveProfile: profileId === activeProfileId // Silinen profil aktifti mi?
                     }
                 }))
+                setDeleteConfirmation(null) // Başarılı olunca kapat
             } else {
-                alert(result.error || 'Profil silinemedi')
+                showError(result.error || 'Profil silinemedi')
+                // Hata durumunda kapatmalı mıyız? Kullanıcı tekrar deneyebilir.
+                // Şimdilik kapatalım, UX tercihi.
+                setDeleteConfirmation(null)
             }
         } catch (e) {
             console.error('[Settings] Profil silme hatası:', e)
+            showError('Profil silme hatası: ' + e.message)
+        } finally {
+            setIsDeletingProfile(false)
         }
     }
+
+    // Silme işlemini iptal et
+    const cancelDeleteProfile = useCallback(() => {
+        setDeleteConfirmation(null)
+    }, [])
 
     return {
         // App info
@@ -322,6 +418,10 @@ export function useSettings(isOpen) {
         handleCreateProfile,
         handleSwitchProfile,
         handleDeleteProfile,
+        deleteConfirmation,
+        isDeletingProfile,
+        confirmDeleteProfile,
+        cancelDeleteProfile,
         loadProfilesList
     }
 }

@@ -32,13 +32,17 @@ export function FileProvider({ children }) {
     // FIX: Stale closure sorunu çözüldü - sadece başlangıçtaki dosyaları günceller
     // PERFORMANS: Batch işleme ile aynı anda çok fazla I/O önlenir
     useEffect(() => {
+        let isMounted = true // Unmount kontrolü için flag
+
         const rehydrateFiles = async () => {
             if (!window.electronAPI) return
 
             // İlk snapshot'ı al - bu an mevcut olan dosyaların ID'lerini kaydet
             // Asenkron işlem sırasında eklenen dosyalar bu listede OLMAYACAK
             const initialFileSystem = [...fileSystem]
-            const initialFileIds = new Set(initialFileSystem.map(item => item.id))
+            const initialFileIds = new Set(initialFileSystem
+                .filter(item => item && item.id) // Null/undefined item kontrolü
+                .map(item => item.id))
 
             // Sadece fiziksel yolu olan dosyaları filtrele
             const filesToRehydrate = initialFileSystem.filter(
@@ -52,6 +56,8 @@ export function FileProvider({ children }) {
             // PERFORMANS: 5'erli batch'ler halinde işle (concurrent I/O limiti)
             const BATCH_SIZE = 5
             for (let i = 0; i < filesToRehydrate.length; i += BATCH_SIZE) {
+                if (!isMounted) return // Component unmount olduysa dur
+
                 const batch = filesToRehydrate.slice(i, i + BATCH_SIZE)
 
                 await Promise.all(batch.map(async (file) => {
@@ -72,10 +78,15 @@ export function FileProvider({ children }) {
                 }))
             }
 
-            // Değişiklik varsa state'i güncelle
+            // Değişiklik varsa state'i güncelle (sadece component hala mount ise)
             // FIX: Fonksiyonel güncelleme ile EN GÜNCEL state'i kullan
-            if (updates.size > 0) {
+            if (isMounted && updates.size > 0) {
                 setFileSystem(currentState => {
+                    // Array kontrolü
+                    if (!Array.isArray(currentState)) {
+                        console.warn('[FileContext] currentState is not an array in rehydrateFiles update')
+                        return []
+                    }
                     // currentState şu anki EN GÜNCEL değer
                     return currentState.map(item => {
                         // Sadece başlangıçta var olan ve güncellenmesi gereken dosyaları güncelle
@@ -90,6 +101,10 @@ export function FileProvider({ children }) {
         }
 
         rehydrateFiles()
+
+        return () => {
+            isMounted = false // Cleanup: unmount flag'i
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // Sadece mount anında çalışsın
 
@@ -164,14 +179,26 @@ export function FileProvider({ children }) {
      */
     const moveItem = useCallback((itemId, newParentId) => {
         // Bir öğeyi kendi içine veya alt klasörüne taşımayı engelle
-        const isDescendant = (parentId, targetId, items) => {
+        const isDescendant = (parentId, targetId, items, visited = new Set()) => {
             if (parentId === targetId) return true
+            // Circular reference kontrolü
+            if (visited.has(parentId)) {
+                console.warn('[FileContext] Circular reference detected in isDescendant')
+                return false
+            }
+            visited.add(parentId)
             const parent = items.find(item => item.id === parentId)
             if (!parent || parent.parentId === null) return false
-            return isDescendant(parent.parentId, targetId, items)
+            return isDescendant(parent.parentId, targetId, items, visited)
         }
 
         setFileSystem(prev => {
+            // Array kontrolü
+            if (!Array.isArray(prev)) {
+                console.warn('[FileContext] fileSystem is not an array in moveItem')
+                return []
+            }
+
             // Kendine taşıma kontrolü
             if (itemId === newParentId) {
                 console.warn('FileContext: Öğe kendine taşınamaz.')
@@ -203,14 +230,26 @@ export function FileProvider({ children }) {
      */
     const deleteItem = useCallback((itemId) => {
         setFileSystem(prev => {
+            // Array kontrolü
+            if (!Array.isArray(prev)) {
+                console.warn('[FileContext] fileSystem is not an array in deleteItem')
+                return []
+            }
+
             // Silinecek öğe ve tüm alt öğelerini bul
             const itemsToDelete = new Set()
 
-            const collectChildren = (parentId) => {
+            const collectChildren = (parentId, visited = new Set()) => {
+                // Circular reference kontrolü
+                if (visited.has(parentId)) {
+                    console.warn('[FileContext] Circular reference detected in collectChildren')
+                    return
+                }
+                visited.add(parentId)
                 itemsToDelete.add(parentId)
                 prev.forEach(item => {
                     if (item.parentId === parentId) {
-                        collectChildren(item.id)
+                        collectChildren(item.id, visited)
                     }
                 })
             }
@@ -231,6 +270,10 @@ export function FileProvider({ children }) {
      * @returns {Array} Alt öğeler listesi
      */
     const getChildren = useCallback((parentId = null) => {
+        if (!Array.isArray(fileSystem)) {
+            console.warn('[FileContext] fileSystem is not an array, returning empty array')
+            return []
+        }
         return fileSystem.filter(item => item.parentId === parentId)
     }, [fileSystem])
 
@@ -239,6 +282,10 @@ export function FileProvider({ children }) {
      * @returns {Array} En üst seviye öğeler
      */
     const getRootItems = useCallback(() => {
+        if (!Array.isArray(fileSystem)) {
+            console.warn('[FileContext] fileSystem is not an array, returning empty array')
+            return []
+        }
         return fileSystem.filter(item => item.parentId === null)
     }, [fileSystem])
 
@@ -248,6 +295,10 @@ export function FileProvider({ children }) {
      * @returns {Object|undefined} Bulunan öğe veya undefined
      */
     const getItemById = useCallback((itemId) => {
+        if (!Array.isArray(fileSystem)) {
+            console.warn('[FileContext] fileSystem is not an array, returning undefined')
+            return undefined
+        }
         return fileSystem.find(item => item.id === itemId)
     }, [fileSystem])
 
@@ -257,10 +308,21 @@ export function FileProvider({ children }) {
      * @returns {Array} Yol dizisi
      */
     const getItemPath = useCallback((itemId) => {
+        if (!Array.isArray(fileSystem)) {
+            console.warn('[FileContext] fileSystem is not an array, returning empty array')
+            return []
+        }
         const path = []
+        const visited = new Set() // Circular reference kontrolü için
         let currentItem = fileSystem.find(item => item.id === itemId)
 
         while (currentItem) {
+            // Circular reference kontrolü
+            if (visited.has(currentItem.id)) {
+                console.warn('[FileContext] Circular reference detected in getItemPath')
+                break
+            }
+            visited.add(currentItem.id)
             path.unshift(currentItem)
             currentItem = fileSystem.find(item => item.id === currentItem.parentId)
         }
