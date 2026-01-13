@@ -13,6 +13,8 @@ const {
     isEncryptionAvailable
 } = require('./cookieEncryption')
 
+
+
 /**
  * Cookie listesinden hedef platformu tespit et
  * @param {Array} cookies - Cookie listesi
@@ -412,44 +414,76 @@ async function restoreActiveProfileCookies(mainWindow = null) {
                 console.log(`[Profiles] Restore sonrası durum: ${newValidation.reason}`, newValidation.details)
 
                 // Restore sonrası da geçersizse - yedekteki cookie'ler de expire olmuş
-                // Restore sonrası da geçersizse - yedekteki cookie'ler de expire olmuş
+                // PROFİLİ SİL - kullanıcı yeniden oluşturmalı
                 if (!newValidation.isValid) {
-                    console.log(`[Profiles] ⚠️ Yedekteki cookie'ler de geçersiz: ${activeProfile.name}`)
+                    console.log(`[Profiles] ⚠️ Yedekteki cookie'ler de geçersiz, profil siliniyor: ${activeProfile.name}`)
                     result.sessionExpired = true
                     result.success = false
+                    result.profileDeleted = true
 
-                    // Profili silmek yerine SADECE cookie'leri temizle
-                    // Kullanıcı sadece tekrar giriş yapmalı, profil silinmemeli
+                    // Partition verilerini temizle
                     try {
                         await ses.clearStorageData()
                         console.log(`[Profiles] Partition temizlendi (session expired): ${partition}`)
                     } catch (e) { /* ignore */ }
 
-                    // Renderer'a bildir - login overlay gösterilsin
+                    // Profili listeden sil
+                    const profileIdToDelete = activeProfile.id
+                    const profileNameDeleted = activeProfile.name
+                    const currentData = loadProfiles()
+                    const profileIndex = currentData.profiles.findIndex(p => p.id === profileIdToDelete)
+                    if (profileIndex !== -1) {
+                        currentData.profiles.splice(profileIndex, 1)
+                        // Eğer bu profil aktifse, başka bir profil seç veya null yap
+                        if (currentData.activeProfileId === profileIdToDelete) {
+                            currentData.activeProfileId = currentData.profiles.length > 0 ? currentData.profiles[0].id : null
+                        }
+                        saveProfiles(currentData)
+                        console.log(`[Profiles] ✅ Süresi dolmuş profil silindi: ${profileNameDeleted}`)
+                    }
+
+                    // Renderer'a bildir - profil silindi
                     if (mainWindow && !mainWindow.isDestroyed()) {
                         mainWindow.webContents.send('session-expired', {
-                            profileName: activeProfile.name,
+                            profileName: profileNameDeleted,
+                            profileId: profileIdToDelete,
                             reason: newValidation.reason,
-                            action: 'login-required'
+                            action: 'profile-deleted'
                         })
-                        console.log('[Profiles] Renderer\'a session-expired eventi gönderildi (login required)')
+                        console.log('[Profiles] Renderer\'a session-expired eventi gönderildi (profile deleted)')
                     }
                 }
             } else {
-                // Yedekte cookie yok - cookie'leri temizle ama profili silme
-                console.log(`[Profiles] ⚠️ Şifreli yedekte cookie bulunamadı: ${activeProfile.name}`)
+                // Yedekte cookie yok - profili sil
+                console.log(`[Profiles] ⚠️ Şifreli yedekte cookie bulunamadı, profil siliniyor: ${activeProfile.name}`)
                 result.sessionExpired = true
                 result.success = false
+                result.profileDeleted = true
 
                 try {
                     await ses.clearStorageData()
                 } catch (e) { /* ignore */ }
 
+                // Profili listeden sil
+                const profileIdToDelete = activeProfile.id
+                const profileNameDeleted = activeProfile.name
+                const currentData = loadProfiles()
+                const profileIndex = currentData.profiles.findIndex(p => p.id === profileIdToDelete)
+                if (profileIndex !== -1) {
+                    currentData.profiles.splice(profileIndex, 1)
+                    if (currentData.activeProfileId === profileIdToDelete) {
+                        currentData.activeProfileId = currentData.profiles.length > 0 ? currentData.profiles[0].id : null
+                    }
+                    saveProfiles(currentData)
+                    console.log(`[Profiles] ✅ Cookie yedeği olmayan profil silindi: ${profileNameDeleted}`)
+                }
+
                 if (mainWindow && !mainWindow.isDestroyed()) {
                     mainWindow.webContents.send('session-expired', {
-                        profileName: activeProfile.name,
+                        profileName: profileNameDeleted,
+                        profileId: profileIdToDelete,
                         reason: 'No backup cookies found',
-                        action: 'login-required'
+                        action: 'profile-deleted'
                     })
                 }
             }
@@ -611,9 +645,51 @@ function registerProfileHandlers() {
         }
     })
 
-    // Profil güncelle (UI uyumluluğu için)
-    ipcMain.handle('update-profile', async (event, profileId) => {
-        return { success: true }
+    // Profil güncelle (İsim değiştirme)
+    ipcMain.handle('rename-profile', async (event, { profileId, newName }) => {
+        try {
+            if (!newName || newName.trim().length === 0) {
+                return { success: false, error: 'Yeni profil adı gerekli' }
+            }
+
+            // profileId sanitization
+            const sanitizedId = sanitizeProfileId(profileId)
+            if (!sanitizedId) {
+                return { success: false, error: 'Geçersiz profil ID formatı' }
+            }
+
+            const data = loadProfiles()
+
+            // profiles array kontrolü
+            if (!data.profiles || !Array.isArray(data.profiles)) {
+                return { success: false, error: 'Profil verisi geçersiz' }
+            }
+
+            const profileIndex = data.profiles.findIndex(p => p.id === sanitizedId)
+
+            if (profileIndex === -1) {
+                return { success: false, error: 'Profil bulunamadı' }
+            }
+
+            // İsim çakışması kontrolü (kendisi hariç)
+            const duplicate = data.profiles.find(p =>
+                p.id !== sanitizedId &&
+                p.name.toLowerCase() === newName.trim().toLowerCase()
+            )
+
+            if (duplicate) {
+                return { success: false, error: 'Bu isimde başka bir profil zaten var' }
+            }
+
+            // Profili güncelle
+            data.profiles[profileIndex].name = newName.trim()
+            saveProfiles(data)
+
+            return { success: true, profile: data.profiles[profileIndex] }
+        } catch (error) {
+            console.error('[Profiles] Profil güncelleme hatası:', error)
+            return { success: false, error: error.message }
+        }
     })
 
     // Profile geç
@@ -786,44 +862,7 @@ function registerProfileHandlers() {
         }
     })
 
-    // Profil adını değiştir
-    ipcMain.handle('rename-profile', async (event, profileId, newName) => {
-        try {
-            // profileId sanitization
-            const sanitizedId = sanitizeProfileId(profileId)
-            if (!sanitizedId) {
-                return { success: false, error: 'Geçersiz profil ID formatı' }
-            }
 
-            if (!newName || newName.trim().length === 0) {
-                return { success: false, error: 'Profil adı gerekli' }
-            }
-
-            const data = loadProfiles()
-
-            // profiles array kontrolü
-            if (!data.profiles || !Array.isArray(data.profiles)) {
-                return { success: false, error: 'Profil verisi geçersiz' }
-            }
-
-            const profile = data.profiles.find(p => p.id === sanitizedId)
-
-            if (!profile) {
-                return { success: false, error: 'Profil bulunamadı' }
-            }
-
-            if (data.profiles.some(p => p.id !== sanitizedId && p.name.toLowerCase() === newName.trim().toLowerCase())) {
-                return { success: false, error: 'Bu isimde bir profil zaten var' }
-            }
-
-            profile.name = newName.trim()
-            saveProfiles(data)
-
-            return { success: true }
-        } catch (error) {
-            return { success: false, error: error.message }
-        }
-    })
 }
 
 let cookieSyncInterval = null

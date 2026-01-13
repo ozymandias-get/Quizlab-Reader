@@ -21,7 +21,7 @@ function loadWindowState() {
     try {
         if (fs.existsSync(windowStateFile)) {
             const data = fs.readFileSync(windowStateFile, 'utf-8')
-            
+
             // Boş dosya kontrolü
             if (!data || data.trim().length === 0) {
                 console.warn('[WindowState] Dosya boş, varsayılan değerler kullanılıyor')
@@ -33,9 +33,9 @@ function loadWindowState() {
                     isMaximized: false
                 }
             }
-            
+
             const state = JSON.parse(data)
-            
+
             // Geçerli format kontrolü
             if (!state || typeof state !== 'object') {
                 console.warn('[WindowState] Geçersiz state verisi, varsayılan değerler kullanılıyor')
@@ -47,7 +47,7 @@ function loadWindowState() {
                     isMaximized: false
                 }
             }
-            
+
             return state
         }
     } catch (error) {
@@ -120,9 +120,10 @@ function createWindow() {
         ? path.join(__dirname, '../preload/index.js')
         : path.join(app.getAppPath(), 'src', 'preload', 'index.js')
 
+    const iconExtension = process.platform === 'win32' ? 'ico' : 'png'
     const iconPath = isDev
-        ? path.join(__dirname, '../../resources/icon.png')
-        : path.join(process.resourcesPath, 'resources', 'icon.png')
+        ? path.join(__dirname, `../../resources/icon.${iconExtension}`)
+        : path.join(process.resourcesPath, `resources`, `icon.${iconExtension}`)
 
     mainWindow = new BrowserWindow({
         width: windowState.width,

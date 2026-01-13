@@ -16,7 +16,8 @@ function ProfileSection({
     isSwitchingProfile,
     handleCreateProfile,
     handleSwitchProfile,
-    handleDeleteProfile
+    handleDeleteProfile,
+    handleRenameProfile
 }) {
     const { t } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
@@ -82,6 +83,7 @@ function ProfileSection({
                         isSwitchingProfile={isSwitchingProfile}
                         handleSwitchProfile={handleSwitchProfile}
                         handleDeleteProfile={handleDeleteProfile}
+                        handleRenameProfile={handleRenameProfile}
                     />
                 )}
 
@@ -325,9 +327,39 @@ function ProfileList({
     activeProfileId,
     isSwitchingProfile,
     handleSwitchProfile,
-    handleDeleteProfile
+    handleDeleteProfile,
+    handleRenameProfile
 }) {
     const otherProfiles = profiles.filter(p => p.id !== activeProfileId)
+    const [editingId, setEditingId] = useState(null)
+    const [editName, setEditName] = useState('')
+    const [isSaving, setIsSaving] = useState(false)
+
+    const startEditing = (profile) => {
+        setEditingId(profile.id)
+        setEditName(profile.name)
+    }
+
+    const cancelEditing = () => {
+        setEditingId(null)
+        setEditName('')
+        setIsSaving(false)
+    }
+
+    const saveEditing = async (profileId) => {
+        if (!editName.trim() || isSaving) return
+
+        setIsSaving(true)
+        try {
+            const success = await handleRenameProfile(profileId, editName.trim())
+            if (success) {
+                setEditingId(null)
+                setEditName('')
+            }
+        } finally {
+            setIsSaving(false)
+        }
+    }
 
     if (otherProfiles.length === 0) return null
 
@@ -356,84 +388,144 @@ function ProfileList({
                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.04)'
                     }}
                 >
-                    <div className="flex items-center gap-2.5">
-                        {/* Avatar */}
-                        <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center"
-                            style={{
-                                background: 'rgba(255, 255, 255, 0.06)',
-                                border: '1px solid rgba(255, 255, 255, 0.08)'
-                            }}
-                        >
-                            <span
-                                className="text-xs font-medium"
-                                style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                    {editingId === profile.id ? (
+                        /* Editing Mode */
+                        <div className="flex-1 flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                className="flex-1 px-3 py-1.5 text-sm rounded-lg bg-black/20 border border-white/10 text-white focus:outline-none focus:border-indigo-500/50"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEditing(profile.id)
+                                    if (e.key === 'Escape') cancelEditing()
+                                }}
+                            />
+                            <button
+                                onClick={() => saveEditing(profile.id)}
+                                disabled={!editName.trim() || isSaving}
+                                className="p-1.5 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors"
                             >
-                                {profile.name.charAt(0).toUpperCase()}
-                            </span>
-                        </div>
-                        <span
-                            className="text-sm"
-                            style={{ color: 'rgba(255, 255, 255, 0.8)' }}
-                        >
-                            {profile.name}
-                        </span>
-                        {profile.isEncrypted && (
-                            <span
-                                title="Cookie verileri şifreli"
-                                style={{ color: 'rgba(52, 211, 153, 0.8)' }}
-                            >
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
-                            </span>
-                        )}
-                    </div>
+                            </button>
+                            <button
+                                onClick={cancelEditing}
+                                className="p-1.5 text-white/40 hover:text-white/80 hover:bg-white/5 rounded-lg transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    ) : (
+                        /* Normal Mode */
+                        <>
+                            <div className="flex items-center gap-2.5">
+                                {/* Avatar */}
+                                <div
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.06)',
+                                        border: '1px solid rgba(255, 255, 255, 0.08)'
+                                    }}
+                                >
+                                    <span
+                                        className="text-xs font-medium"
+                                        style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                                    >
+                                        {profile.name.charAt(0).toUpperCase()}
+                                    </span>
+                                </div>
+                                <span
+                                    className="text-sm"
+                                    style={{ color: 'rgba(255, 255, 255, 0.8)' }}
+                                >
+                                    {profile.name}
+                                </span>
+                                {profile.isEncrypted && (
+                                    <span
+                                        title="Cookie verileri şifreli"
+                                        style={{ color: 'rgba(52, 211, 153, 0.8)' }}
+                                    >
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                        </svg>
+                                    </span>
+                                )}
+                            </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-1.5">
-                        <button
-                            onClick={() => handleSwitchProfile(profile.id)}
-                            disabled={isSwitchingProfile !== null}
-                            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{
-                                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)',
-                                border: '1px solid rgba(99, 102, 241, 0.25)',
-                                color: 'rgba(165, 180, 252, 1)'
-                            }}
-                            onMouseEnter={(e) => {
-                                if (isSwitchingProfile !== profile.id) {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%)'
-                                    e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)'
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)'
-                                e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.25)'
-                            }}
-                        >
-                            {isSwitchingProfile === profile.id ? '...' : 'Geç'}
-                        </button>
-                        <button
-                            onClick={() => handleDeleteProfile(profile.id)}
-                            className="p-1.5 rounded-lg transition-all duration-200"
-                            style={{
-                                color: 'rgba(255, 255, 255, 0.3)'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
-                                e.currentTarget.style.color = 'rgba(248, 113, 113, 1)'
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent'
-                                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.3)'
-                            }}
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
+                            {/* Actions */}
+                            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <button
+                                    onClick={() => handleSwitchProfile(profile.id)}
+                                    disabled={isSwitchingProfile !== null}
+                                    className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    style={{
+                                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                                        border: '1px solid rgba(99, 102, 241, 0.25)',
+                                        color: 'rgba(165, 180, 252, 1)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (isSwitchingProfile !== profile.id) {
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%)'
+                                            e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)'
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)'
+                                        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.25)'
+                                    }}
+                                >
+                                    {isSwitchingProfile === profile.id ? '...' : 'Geç'}
+                                </button>
+
+                                <button
+                                    onClick={() => startEditing(profile)}
+                                    className="p-1.5 rounded-lg transition-all duration-200"
+                                    style={{
+                                        color: 'rgba(255, 255, 255, 0.3)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+                                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
+                                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.3)'
+                                    }}
+                                    title="İsim değiştir"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+
+                                <button
+                                    onClick={() => handleDeleteProfile(profile.id)}
+                                    className="p-1.5 rounded-lg transition-all duration-200"
+                                    style={{
+                                        color: 'rgba(255, 255, 255, 0.3)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                                        e.currentTarget.style.color = 'rgba(248, 113, 113, 1)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
+                                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.3)'
+                                    }}
+                                    title="Profili sil"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             ))}
         </div>

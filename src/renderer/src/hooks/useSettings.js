@@ -343,6 +343,35 @@ export function useSettings(isOpen) {
         })
     }
 
+    // Profili yeniden adlandır
+    const handleRenameProfile = async (profileId, newName) => {
+        if (!window.electronAPI?.renameProfile) return false
+
+        try {
+            const result = await window.electronAPI.renameProfile(profileId, newName)
+            if (result.success) {
+                await loadProfilesList()
+                showSuccess('Profil yeniden adlandırıldı')
+
+                window.dispatchEvent(new CustomEvent('cookies-changed', {
+                    detail: {
+                        action: 'profile-renamed',
+                        profileId,
+                        newName
+                    }
+                }))
+                return true
+            } else {
+                showError(result.error || 'Yeniden adlandırma başarısız')
+                return false
+            }
+        } catch (e) {
+            console.error('[Settings] Profil adlandırma hatası:', e)
+            showError('Hata: ' + e.message)
+            return false
+        }
+    }
+
     // Silme işlemini onayla
     const confirmDeleteProfile = async () => {
         if (!deleteConfirmation || isDeletingProfile) return
@@ -418,6 +447,7 @@ export function useSettings(isOpen) {
         handleCreateProfile,
         handleSwitchProfile,
         handleDeleteProfile,
+        handleRenameProfile,
         deleteConfirmation,
         isDeletingProfile,
         confirmDeleteProfile,

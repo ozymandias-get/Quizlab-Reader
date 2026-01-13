@@ -322,16 +322,32 @@ function App() {
 
                         {/* Sekme İçerikleri */}
                         <div className="flex-1 overflow-hidden relative">
-                            {/* FileExplorer - Hep render edilir, CSS ile gizlenir */}
-                            <div className={`h-full w-full ${leftPanelTab === LEFT_PANEL_TABS.EXPLORER ? 'block' : 'hidden'}`}>
+                            {/* FileExplorer */}
+                            <div
+                                className="absolute inset-0 w-full h-full transition-all duration-300"
+                                style={{
+                                    opacity: leftPanelTab === LEFT_PANEL_TABS.EXPLORER ? 1 : 0,
+                                    pointerEvents: leftPanelTab === LEFT_PANEL_TABS.EXPLORER ? 'auto' : 'none',
+                                    zIndex: leftPanelTab === LEFT_PANEL_TABS.EXPLORER ? 10 : 1,
+                                    visibility: leftPanelTab === LEFT_PANEL_TABS.EXPLORER ? 'visible' : 'hidden' // Görünmezken render maliyetini düşür
+                                }}
+                            >
                                 <FileExplorer
                                     onFileSelect={handleFileSelect}
                                     className="h-full"
                                 />
                             </div>
 
-                            {/* PdfViewer - Hep render edilir, CSS ile gizlenir */}
-                            <div className={`h-full w-full ${leftPanelTab === LEFT_PANEL_TABS.VIEWER ? 'block' : 'hidden'}`}>
+                            {/* PdfViewer */}
+                            <div
+                                className="absolute inset-0 w-full h-full transition-all duration-300 bg-stone-900" // Arka plan ekle ki alttaki görünmesin
+                                style={{
+                                    opacity: leftPanelTab === LEFT_PANEL_TABS.VIEWER ? 1 : 0,
+                                    pointerEvents: leftPanelTab === LEFT_PANEL_TABS.VIEWER ? 'auto' : 'none',
+                                    zIndex: leftPanelTab === LEFT_PANEL_TABS.VIEWER ? 10 : 1,
+                                    visibility: leftPanelTab === LEFT_PANEL_TABS.VIEWER ? 'visible' : 'hidden'
+                                }}
+                            >
                                 <PdfViewer
                                     pdfFile={pdfFile}
                                     onSelectPdf={handleSelectPdf}

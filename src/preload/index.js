@@ -61,9 +61,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Yeni profil oluştur (isim ve opsiyonel cookie JSON)
     createProfile: (name, cookieJson) => ipcRenderer.invoke('create-profile', name, cookieJson),
 
-    // Profili güncelle
-    updateProfile: (profileId) => ipcRenderer.invoke('update-profile', profileId),
-
     // Profile geç
     switchProfile: (profileId) => ipcRenderer.invoke('switch-profile', profileId),
 
@@ -71,7 +68,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deleteProfile: (profileId) => ipcRenderer.invoke('delete-profile', profileId),
 
     // Profil adını değiştir
-    renameProfile: (profileId, newName) => ipcRenderer.invoke('rename-profile', profileId, newName),
+    renameProfile: (profileId, newName) => ipcRenderer.invoke('rename-profile', { profileId, newName }),
 
     // ===== UPDATER API =====
     // Güncelleme kontrolü (GitHub Releases)

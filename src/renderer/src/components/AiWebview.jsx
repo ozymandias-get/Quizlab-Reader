@@ -33,7 +33,7 @@ function AiWebview({ isResizing }) {
 
     // Crash recovery için retry sayacı
     const crashRetryCount = useRef({})
-    
+
     // setTimeout cleanup için ref
     const timeoutRefs = useRef({})
 
@@ -222,7 +222,7 @@ function AiWebview({ isResizing }) {
                     if (timeoutRefs.current['checkGoogleLogin']) {
                         clearTimeout(timeoutRefs.current['checkGoogleLogin'])
                     }
-                    
+
                     timeoutRefs.current['checkGoogleLogin'] = setTimeout(async () => {
                         if (window.electronAPI?.checkGoogleLogin) {
                             const googleResult = await window.electronAPI.checkGoogleLogin()
@@ -261,10 +261,23 @@ function AiWebview({ isResizing }) {
             // Default partition'a dön
             setCurrentPartition('persist:ai_session')
 
-            // Kullanıcıya bildir
+            // Kullanıcıya bildir - action'a göre farklı mesaj
             if (data.profileName) {
-                showWarning(`"${data.profileName}" profilinin oturumu sona erdi. Lütfen tekrar giriş yapın.`)
+                if (data.action === 'profile-deleted') {
+                    showWarning(`"${data.profileName}" profilinin oturumu sona erdi ve silindi. Lütfen yeniden giriş yapın.`)
+                } else {
+                    showWarning(`"${data.profileName}" profilinin oturumu sona erdi. Lütfen tekrar giriş yapın.`)
+                }
             }
+
+            // cookies-changed eventi dispatch et - ayarlar panelini güncelle
+            window.dispatchEvent(new CustomEvent('cookies-changed', {
+                detail: {
+                    action: 'profile-deleted',
+                    wasActiveProfile: true,
+                    partition: 'persist:ai_session'
+                }
+            }))
         })
 
         return cleanup

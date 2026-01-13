@@ -12,50 +12,91 @@ export function usePdfScreenshot({ currentPage, sendImageToAI, startScreenshot }
     // Tam Sayfa Screenshot Alma (Canvas'tan)
     const handleFullPageScreenshot = useCallback(async () => {
         try {
+            // DOM güncellemesini bekle (currentPage state değişikliği DOM'a yansısın)
+            await new Promise(resolve => setTimeout(resolve, 100))
+
             const pageLayers = document.querySelectorAll('.rpv-core__page-layer')
             let targetCanvas = null
+            let foundMethod = ''
 
             // Mevcut sayfayı bul (0-indexed)
             const pageIndex = currentPage - 1
 
-            // Page layer'ı data-page-number attribute'u ile bul
+            console.log('[PdfScreenshot] 📸 Ekran görüntüsü alınıyor - Sayfa:', currentPage, 'Index:', pageIndex)
+
+            // Method 1: Page layer'ı data-page-number attribute'u ile bul
             for (const layer of pageLayers) {
                 const pageNum = layer.getAttribute('data-page-number')
                 if (pageNum && parseInt(pageNum) === pageIndex) {
                     targetCanvas = layer.querySelector('canvas')
                     if (targetCanvas) {
-                        console.log('[PdfScreenshot] Canvas bulundu (data-page-number):', pageNum)
+                        foundMethod = `data-page-number: ${pageNum}`
+                        console.log('[PdfScreenshot] ✓ Canvas bulundu (data-page-number):', pageNum)
                         break
                     }
                 }
             }
 
+            // Method 2: En büyük görünür alandaki canvas'ı bul
             if (!targetCanvas) {
                 const canvasList = document.querySelectorAll('.rpv-core__page-layer canvas')
+                let maxVisibleArea = 0
 
-                // En görünür canvas'ı bul (viewport içinde olan)
                 for (const canvas of canvasList) {
                     const rect = canvas.getBoundingClientRect()
-                    const isVisible = rect.top < window.innerHeight && rect.bottom > 0
 
-                    if (isVisible) {
+                    // Görünür alanı hesapla
+                    const visibleTop = Math.max(0, rect.top)
+                    const visibleBottom = Math.min(window.innerHeight, rect.bottom)
+                    const visibleLeft = Math.max(0, rect.left)
+                    const visibleRight = Math.min(window.innerWidth, rect.right)
+
+                    const visibleHeight = Math.max(0, visibleBottom - visibleTop)
+                    const visibleWidth = Math.max(0, visibleRight - visibleLeft)
+                    const visibleArea = visibleHeight * visibleWidth
+
+                    if (visibleArea > maxVisibleArea) {
+                        maxVisibleArea = visibleArea
                         targetCanvas = canvas
-                        console.log('[PdfScreenshot] Canvas bulundu (visibility check)')
-                        break
+                        foundMethod = `en büyük görünür alan: ${Math.round(visibleArea)} px²`
                     }
                 }
 
-                // Eğer hala yoksa ilk canvas'ı al
-                if (!targetCanvas && canvasList.length > 0) {
-                    targetCanvas = canvasList[0]
-                    console.log('[PdfScreenshot] Canvas bulundu (fallback - ilk canvas)')
+                if (targetCanvas && maxVisibleArea > 0) {
+                    console.log('[PdfScreenshot] ✓ Canvas bulundu (visibility check):', foundMethod)
+                }
+            }
+
+            // Method 3: Fallback - viewport'un tam ortasındaki canvas'ı al
+            if (!targetCanvas) {
+                const canvasList = document.querySelectorAll('.rpv-core__page-layer canvas')
+                const viewportCenterY = window.innerHeight / 2
+
+                let minDistance = Infinity
+
+                for (const canvas of canvasList) {
+                    const rect = canvas.getBoundingClientRect()
+                    const canvasCenterY = rect.top + rect.height / 2
+                    const distance = Math.abs(canvasCenterY - viewportCenterY)
+
+                    if (distance < minDistance) {
+                        minDistance = distance
+                        targetCanvas = canvas
+                        foundMethod = `viewport merkezine en yakın (${Math.round(distance)} px)`
+                    }
+                }
+
+                if (targetCanvas) {
+                    console.log('[PdfScreenshot] ✓ Canvas bulundu (fallback - merkez):', foundMethod)
                 }
             }
 
             if (!targetCanvas) {
-                console.warn('[PdfScreenshot] Canvas bulunamadı')
+                console.warn('[PdfScreenshot] ❌ Canvas bulunamadı')
                 return
             }
+
+            console.log('[PdfScreenshot] ✓ Canvas seçildi:', foundMethod)
 
             // Canvas'tan yüksek kaliteli görüntü al
             const dataUrl = targetCanvas.toDataURL('image/png', 1.0)
@@ -65,6 +106,8 @@ export function usePdfScreenshot({ currentPage, sendImageToAI, startScreenshot }
 
             if (!success) {
                 console.warn('[PdfScreenshot] ⚠️ Screenshot gönderilemedi')
+            } else {
+                console.log('[PdfScreenshot] ✓ Ekran görüntüsü başarıyla gönderildi')
             }
 
         } catch (error) {

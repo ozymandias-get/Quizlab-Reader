@@ -161,6 +161,11 @@ app.on('before-quit', async (event) => {
 // ERROR HANDLERS
 // ============================================
 process.on('uncaughtException', (error) => {
+    // EPIPE hatalarını yoksay (Genellikle kapanırken oluşan zararsız pipe hataları)
+    if (error.code === 'EPIPE') {
+        return
+    }
+
     console.error('Uncaught Exception:', error)
 
     if (app.isReady()) {

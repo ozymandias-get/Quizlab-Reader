@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Sürüm-2.1.0-blue?style=for-the-badge" alt="Sürüm">
+  <img src="https://img.shields.io/badge/Sürüm-2.2.1-blue?style=for-the-badge" alt="Sürüm">
   <img src="https://img.shields.io/badge/Electron-28.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/Vite-5.0.10-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
@@ -44,7 +44,13 @@
 
 ---
 
-## 🆕 v2.1.0 Sürümündeki Yenilikler
+## 🆕 v2.2.0 Sürümündeki Yenilikler
+
+### 🔄 Kalıcı Oturum Senkronizasyonu
+- **Otomatik Senkronizasyon Motoru:** Her 5 dakikada oturum cookie'lerini şifreli depolamaya senkronize eder.
+- **Yarış Koşulu Koruması:** Akıllı kilitleme, profil geçişleri veya hızlı değişiklikler sırasında veri kaybını önler.
+- **Güvenli Çıkış:** "Graceful Shutdown" mekanizması, uygulamayı kapatmadan önce son oturum yedeklemesini bekler.
+- **Düzeltme:** Uygulama yeniden başlatıldığında Google oturumlarının süresi dolma veya çıkış yapma sorunu çözüldü.
 
 ### Platform Tespit Sistemi
 - 🔍 Cookie domain'lerinden otomatik platform tespiti (Gemini/ChatGPT)
@@ -139,62 +145,89 @@ Quizlab-Reader/
 │   │   ├── googleAuth.js        # Google kimlik doğrulama popup'ı
 │   │   ├── pdfProtocol.js       # Özel PDF protokol işleyicisi
 │   │   ├── browserConfig.js     # Tarayıcı/UA yapılandırması
-│   │   └── ipcHandlers.js       # IPC mesaj işleyicileri
+│   │   ├── ipcHandlers.js       # IPC mesaj işleyicileri
+│   │   └── updater.js           # Otomatik güncelleme işlevi
 │   │
 │   ├── preload/                 # Ön yükleme betikleri
 │   │   └── index.js             # Güvenli IPC köprüsü
 │   │
-│   └── renderer/                # React uygulaması
-│       ├── index.html           # HTML giriş noktası
-│       └── src/
-│           ├── App.jsx          # Ana uygulama bileşeni
-│           │
-│           ├── components/      # React bileşenleri
-│           │   ├── AiWebview.jsx        # Yapay zeka platformu webview'ı
-│           │   ├── BottomBar.jsx        # Alt kontrol çubuğu
-│           │   ├── FloatingButton.jsx   # "AI'ya Gönder" kayan butonu
-│           │   ├── ScreenshotTool.jsx   # Ekran görüntüsü yakalama aracı
-│           │   ├── SettingsModal.jsx    # Ayarlar modal bileşeni
-│           │   ├── CookieImportModal.jsx # Cookie içe aktarma dialogu
-│           │   │
-│           │   ├── pdf/                 # 📄 Modüler PDF Görüntüleyici
-│           │   │   ├── index.js               # Toplu dışa aktarım
-│           │   │   ├── PdfViewer.jsx          # Ana PDF bileşeni
-│           │   │   ├── PdfToolbar.jsx         # Araç çubuğu kontrolleri
-│           │   │   ├── PdfSearchBar.jsx       # Arama işlevi
-│           │   │   ├── PdfPlaceholder.jsx     # Boş durum
-│           │   │   └── hooks/                 # PDF'ye özel hook'lar
-│           │   │
-│           │   ├── settings/            # ⚙️ Ayarlar Bileşenleri
-│           │   │   ├── index.js               # Toplu dışa aktarım
-│           │   │   ├── DataTab.jsx            # Cookie & profil yönetimi
-│           │   │   ├── CookieSection.jsx      # Cookie sıfırlama kontrolleri
-│           │   │   ├── ProfileSection.jsx     # Çoklu hesap profilleri
-│           │   │   ├── LanguageTab.jsx        # Dil seçimi
-│           │   │   └── AboutTab.jsx           # Uygulama bilgisi & güncellemeler
-│           │   │
-│           │   └── FileExplorer/        # 📁 Modüler Dosya Gezgini
-│           │       ├── index.jsx              # Ana bileşen
-│           │       └── ...
-│           │
-│           ├── context/         # React context sağlayıcıları
-│           │   ├── AppContext.jsx       # Global uygulama durumu
-│           │   ├── FileContext.jsx      # Dosya sistemi yönetimi
-│           │   ├── ToastContext.jsx     # Toast bildirimleri
-│           │   └── LanguageContext.jsx  # i18n desteği
-│           │
-│           ├── hooks/           # Özel React hook'ları
-│           │   ├── useSettings.js       # Ayarlar modal mantığı
-│           │   ├── useAISender.js       # Yapay zekaya mesaj gönderme
-│           │   ├── useLocalStorage.js   # Kalıcılık
-│           │   └── usePanelResize.js    # Panel yeniden boyutlandırma
-│           │
-│           └── constants/       # Yapılandırma sabitleri
-│               └── aiSites.js           # Yapay zeka platformları yapılandırması
+│   ├── renderer/                # React uygulaması
+│   │   ├── index.html           # HTML giriş noktası
+│   │   └── src/
+│   │       ├── App.jsx          # Ana uygulama bileşeni
+│   │       ├── main.jsx         # React giriş noktası
+│   │       │
+│   │       ├── components/      # React bileşenleri
+│   │       │   ├── AiWebview.jsx        # Yapay zeka platformu webview'ı
+│   │       │   ├── BottomBar.jsx        # Alt kontrol çubuğu
+│   │       │   ├── FloatingButton.jsx   # "AI'ya Gönder" kayan butonu
+│   │       │   ├── ScreenshotTool.jsx   # Ekran görüntüsü yakalama aracı
+│   │       │   ├── SettingsModal.jsx    # Ayarlar modal bileşeni
+│   │       │   ├── CookieImportModal.jsx # Cookie içe aktarma dialogu
+│   │       │   ├── PdfViewer.jsx        # PDF görüntüleyici toplu dışa aktarımı
+│   │       │   │
+│   │       │   ├── pdf/                 # 📄 Modüler PDF Görüntüleyici
+│   │       │   │   ├── index.js               # Toplu dışa aktarım
+│   │       │   │   ├── PdfViewer.jsx          # Ana PDF bileşeni
+│   │       │   │   ├── PdfToolbar.jsx         # Araç çubuğu kontrolleri
+│   │       │   │   ├── PdfSearchBar.jsx       # Arama işlevi
+│   │       │   │   ├── PdfPlaceholder.jsx     # Boş durum
+│   │       │   │   └── hooks/                 # PDF'ye özel hook'lar
+│   │       │   │       ├── index.js
+│   │       │   │       ├── usePdfPlugins.js
+│   │       │   │       ├── usePdfNavigation.js
+│   │       │   │       ├── usePdfScreenshot.js
+│   │       │   │       ├── usePdfTextSelection.js
+│   │       │   │       └── usePdfContextMenu.js
+│   │       │   │
+│   │       │   ├── settings/            # ⚙️ Ayarlar Bileşenleri
+│   │       │   │   ├── index.js               # Toplu dışa aktarım
+│   │       │   │   ├── DataTab.jsx            # Cookie & profil yönetimi
+│   │       │   │   ├── CookieSection.jsx      # Cookie sıfırlama kontrolleri
+│   │       │   │   ├── ProfileSection.jsx     # Çoklu hesap profilleri
+│   │       │   │   ├── LanguageTab.jsx        # Dil seçimi
+│   │       │   │   └── AboutTab.jsx           # Uygulama bilgisi & güncellemeler
+│   │       │   │
+│   │       │   └── FileExplorer/        # 📁 Modüler Dosya Gezgini
+│   │       │       ├── index.jsx              # Ana bileşen
+│   │       │       ├── TreeItem.jsx           # Sürükle-bırak ağaç öğesi
+│   │       │       ├── FileExplorerHeader.jsx # Başlık bileşeni
+│   │       │       ├── FileExplorerFooter.jsx # Altbilgi bileşeni
+│   │       │       ├── EmptyState.jsx         # Boş durum görünümü
+│   │       │       ├── DropOverlay.jsx        # Sürükle-bırak kaplaması
+│   │       │       ├── NewFolderInput.jsx     # Yeni klasör girişi
+│   │       │       ├── DeleteConfirmModal.jsx # Silme onayı
+│   │       │       ├── icons/                 # SVG ikonları
+│   │       │       └── hooks/                 # Gezgin hook'ları
+│   │       │
+│   │       ├── context/         # React context sağlayıcıları
+│   │       │   ├── index.js             # Toplu dışa aktarım
+│   │       │   ├── AppContext.jsx       # Global uygulama durumu
+│   │       │   ├── FileContext.jsx      # Dosya sistemi yönetimi
+│   │       │   ├── ToastContext.jsx     # Toast bildirimleri
+│   │       │   └── LanguageContext.jsx  # i18n desteği
+│   │       │
+│   │       ├── hooks/           # Özel React hook'ları
+│   │       │   ├── index.js             # Toplu dışa aktarım
+│   │       │   ├── useSettings.js       # Ayarlar modal mantığı
+│   │       │   ├── useScreenshot.js     # Ekran görüntüsü işlevi
+│   │       │   ├── useLocalStorage.js   # Kalıcılık
+│   │       │   └── usePanelResize.js    # Panel yeniden boyutlandırma
+│   │       │
+│   │       ├── constants/       # Yapılandırma sabitleri
+│   │       │   ├── aiSites.js           # Yapay zeka platformları yapılandırması
+│   │       │   ├── storageKeys.js       # LocalStorage anahtarları
+│   │       │   └── translations.js      # i18n çevirileri
+│   │       │
+│   │       └── styles/          # CSS stilleri
+│   │           ├── index.css            # Ana CSS girişi
+│   │           └── modules/             # CSS modülleri
+│   │
+│   └── test/                    # Test dosyaları
+│       └── ...                  # Birim testleri
 │
 ├── docs/                        # Dokümantasyon
-│   ├── screenshots/             # Uygulama ekran görüntüleri
-│   └── README_*.md              # Çeviriler
+│   └── screenshots/             # Uygulama ekran görüntüleri
 │
 ├── resources/                   # Uygulama kaynakları
 │   ├── icon.ico                 # Windows ikonu

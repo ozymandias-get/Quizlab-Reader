@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.2.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.2.1-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Electron-28.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/Vite-5.0.10-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
@@ -147,68 +147,89 @@ Quizlab-Reader/
 │   │   ├── googleAuth.js        # Google authentication popup
 │   │   ├── pdfProtocol.js       # Custom PDF protocol handler
 │   │   ├── browserConfig.js     # Browser/UA configuration
-│   │   └── ipcHandlers.js       # IPC message handlers
+│   │   ├── ipcHandlers.js       # IPC message handlers
+│   │   └── updater.js           # Auto-update functionality
 │   │
 │   ├── preload/                 # Preload scripts
 │   │   └── index.js             # Secure IPC bridge
 │   │
-│   └── renderer/                # React application
-│       ├── index.html           # HTML entry point
-│       └── src/
-│           ├── App.jsx          # Main application component
-│           │
-│           ├── components/      # React components
-│           │   ├── AiWebview.jsx        # AI platform webview
-│           │   ├── BottomBar.jsx        # Bottom control bar
-│           │   ├── FloatingButton.jsx   # "Send to AI" floating button
-│           │   ├── ScreenshotTool.jsx   # Screenshot capture tool
-│           │   ├── SettingsModal.jsx    # Settings modal component
-│           │   ├── CookieImportModal.jsx # Cookie import dialog
-│           │   │
-│           │   ├── pdf/                 # 📄 Modular PDF Viewer
-│           │   │   ├── index.js               # Barrel export
-│           │   │   ├── PdfViewer.jsx          # Main PDF component
-│           │   │   ├── PdfToolbar.jsx         # Toolbar controls
-│           │   │   ├── PdfSearchBar.jsx       # Search functionality
-│           │   │   ├── PdfPlaceholder.jsx     # Empty state
-│           │   │   └── hooks/                 # PDF-specific hooks
-│           │   │       ├── usePdfPlugins.js
-│           │   │       ├── usePdfNavigation.js
-│           │   │       ├── usePdfScreenshot.js
-│           │   │       ├── usePdfTextSelection.js
-│           │   │       └── usePdfContextMenu.js
-│           │   │
-│           │   ├── settings/            # ⚙️ Settings Components
-│           │   │   ├── index.js               # Barrel export
-│           │   │   ├── DataTab.jsx            # Cookie & profile management
-│           │   │   ├── CookieSection.jsx      # Cookie reset controls
-│           │   │   ├── ProfileSection.jsx     # Multi-account profiles
-│           │   │   ├── LanguageTab.jsx        # Language selection
-│           │   │   └── AboutTab.jsx           # App info & updates
-│           │   │
-│           │   └── FileExplorer/        # 📁 Modular File Explorer
-│           │       ├── index.jsx              # Main component
-│           │       ├── TreeItem.jsx           # Tree item with drag-drop
-│           │       └── ...
-│           │
-│           ├── context/         # React context providers
-│           │   ├── AppContext.jsx       # Global app state
-│           │   ├── FileContext.jsx      # File system management
-│           │   ├── ToastContext.jsx     # Toast notifications
-│           │   └── LanguageContext.jsx  # i18n support
-│           │
-│           ├── hooks/           # Custom React hooks
-│           │   ├── useSettings.js       # Settings modal logic
-│           │   ├── useAISender.js       # AI message sending
-│           │   ├── useLocalStorage.js   # Persistence
-│           │   └── usePanelResize.js    # Panel resizing
-│           │
-│           └── constants/       # Configuration constants
-│               └── aiSites.js           # AI platforms config
+│   ├── renderer/                # React application
+│   │   ├── index.html           # HTML entry point
+│   │   └── src/
+│   │       ├── App.jsx          # Main application component
+│   │       ├── main.jsx         # React entry point
+│   │       │
+│   │       ├── components/      # React components
+│   │       │   ├── AiWebview.jsx        # AI platform webview
+│   │       │   ├── BottomBar.jsx        # Bottom control bar
+│   │       │   ├── FloatingButton.jsx   # "Send to AI" floating button
+│   │       │   ├── ScreenshotTool.jsx   # Screenshot capture tool
+│   │       │   ├── SettingsModal.jsx    # Settings modal component
+│   │       │   ├── CookieImportModal.jsx # Cookie import dialog
+│   │       │   ├── PdfViewer.jsx        # PDF viewer barrel export
+│   │       │   │
+│   │       │   ├── pdf/                 # 📄 Modular PDF Viewer
+│   │       │   │   ├── index.js               # Barrel export
+│   │       │   │   ├── PdfViewer.jsx          # Main PDF component
+│   │       │   │   ├── PdfToolbar.jsx         # Toolbar controls
+│   │       │   │   ├── PdfSearchBar.jsx       # Search functionality
+│   │       │   │   ├── PdfPlaceholder.jsx     # Empty state
+│   │       │   │   └── hooks/                 # PDF-specific hooks
+│   │       │   │       ├── index.js
+│   │       │   │       ├── usePdfPlugins.js
+│   │       │   │       ├── usePdfNavigation.js
+│   │       │   │       ├── usePdfScreenshot.js
+│   │       │   │       ├── usePdfTextSelection.js
+│   │       │   │       └── usePdfContextMenu.js
+│   │       │   │
+│   │       │   ├── settings/            # ⚙️ Settings Components
+│   │       │   │   ├── index.js               # Barrel export
+│   │       │   │   ├── DataTab.jsx            # Cookie & profile management
+│   │       │   │   ├── CookieSection.jsx      # Cookie reset controls
+│   │       │   │   ├── ProfileSection.jsx     # Multi-account profiles
+│   │       │   │   ├── LanguageTab.jsx        # Language selection
+│   │       │   │   └── AboutTab.jsx           # App info & updates
+│   │       │   │
+│   │       │   └── FileExplorer/        # 📁 Modular File Explorer
+│   │       │       ├── index.jsx              # Main component
+│   │       │       ├── TreeItem.jsx           # Tree item with drag-drop
+│   │       │       ├── FileExplorerHeader.jsx # Header component
+│   │       │       ├── FileExplorerFooter.jsx # Footer component
+│   │       │       ├── EmptyState.jsx         # Empty state view
+│   │       │       ├── DropOverlay.jsx        # Drag-drop overlay
+│   │       │       ├── NewFolderInput.jsx     # New folder input
+│   │       │       ├── DeleteConfirmModal.jsx # Delete confirmation
+│   │       │       ├── icons/                 # SVG icons
+│   │       │       └── hooks/                 # Explorer hooks
+│   │       │
+│   │       ├── context/         # React context providers
+│   │       │   ├── index.js             # Barrel export
+│   │       │   ├── AppContext.jsx       # Global app state
+│   │       │   ├── FileContext.jsx      # File system management
+│   │       │   ├── ToastContext.jsx     # Toast notifications
+│   │       │   └── LanguageContext.jsx  # i18n support
+│   │       │
+│   │       ├── hooks/           # Custom React hooks
+│   │       │   ├── index.js             # Barrel export
+│   │       │   ├── useSettings.js       # Settings modal logic
+│   │       │   ├── useScreenshot.js     # Screenshot functionality
+│   │       │   ├── useLocalStorage.js   # Persistence
+│   │       │   └── usePanelResize.js    # Panel resizing
+│   │       │
+│   │       ├── constants/       # Configuration constants
+│   │       │   ├── aiSites.js           # AI platforms config
+│   │       │   ├── storageKeys.js       # LocalStorage keys
+│   │       │   └── translations.js      # i18n translations
+│   │       │
+│   │       └── styles/          # CSS styles
+│   │           ├── index.css            # Main CSS entry
+│   │           └── modules/             # CSS modules
+│   │
+│   └── test/                    # Test files
+│       └── ...                  # Unit tests
 │
 ├── docs/                        # Documentation
-│   ├── screenshots/             # Application screenshots
-│   └── README_*.md              # Translations
+│   └── screenshots/             # Application screenshots
 │
 ├── resources/                   # Application resources
 │   ├── icon.ico                 # Windows icon

@@ -135,6 +135,7 @@ function SettingsModal({ isOpen, onClose }) {
                                 }
                             }}
                             handleDeleteProfile={settings.handleDeleteProfile}
+                            handleRenameProfile={settings.handleRenameProfile}
                         />
                     )}
 
