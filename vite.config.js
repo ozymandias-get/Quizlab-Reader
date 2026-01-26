@@ -4,16 +4,16 @@ import path from 'path'
 
 export default defineConfig({
     plugins: [react()],
-    root: './src/renderer',
+    root: './frontend',
     publicDir: 'public',
     base: './',
     build: {
-        outDir: '../../dist',
+        outDir: '../dist',
         emptyOutDir: true
     },
     resolve: {
         alias: {
-            '@': path.resolve(__dirname, 'src/renderer/src')
+            '@': path.resolve(__dirname, 'frontend')
         }
     },
     server: {

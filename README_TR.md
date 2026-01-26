@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Sürüm-2.2.1-blue?style=for-the-badge" alt="Sürüm">
-  <img src="https://img.shields.io/badge/Electron-28.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
+  <img src="https://img.shields.io/badge/Versiyon-3.0.0-blue?style=for-the-badge" alt="Versiyon">
+  <img src="https://img.shields.io/badge/Electron-40.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/Vite-5.0.10-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/Lisans-MIT-green?style=for-the-badge" alt="Lisans">
@@ -13,7 +13,7 @@
 <h1 align="center">Quizlab Reader</h1>
 
 <p align="center">
-  <strong>PDF okuma ve yapay zeka asistanlarını bir arada sunan modern, bölünmüş ekranlı Electron uygulaması</strong>
+  <strong>PDF okuma ve yapay zeka destekli araştırma için premium, bölünmüş ekranlı masaüstü uygulaması.</strong>
 </p>
 
 <p align="center">
@@ -22,284 +22,248 @@
 
 ---
 
+## 📸 Ekran Görüntüleri
+
+<p align="center">
+  <img src="docs/screenshots/main-chatgpt.png" alt="ChatGPT ile Ana Arayüz" width="100%">
+  <br><em>PDF görüntüleyici ve ChatGPT entegrasyonu ile bölünmüş ekran arayüzü</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/main-deepseek.png" alt="DeepSeek ile Ana Arayüz" width="100%">
+  <br><em>DeepSeek AI asistanı ve AI'ya Gönder özelliği ile PDF okuma</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/main-deepseek-2.png" alt="DeepSeek Derin Düşünme" width="100%">
+  <br><em>DeepSeek ile Derin Düşünme ve Web Arama özellikleri</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/settings-models.png" alt="Ayarlar - AI Modelleri" width="100%">
+  <br><em>AI model yapılandırması ile modern ayarlar paneli</em>
+</p>
+
+---
+
 ## 🎯 Genel Bakış
 
-**Quizlab Reader**, okuma ve çalışma deneyimini geliştirmek isteyen öğrenciler ve araştırmacılar için tasarlanmış güçlü bir masaüstü uygulamasıdır. Bir tarafta PDF belgelerini görüntüleyebileceğiniz, diğer tarafta yapay zeka asistanları (ChatGPT veya Gemini) ile etkileşime geçebileceğiniz sorunsuz bir bölünmüş ekran arayüzü sunar.
+**Quizlab Reader**, öğrenciler, araştırmacılar ve ileri düzey kullanıcılar için tasarlanmış son teknoloji bir masaüstü uygulamasıdır. PDF belgelerini okuyabileceğiniz ve çeşitli AI platformlarıyla aynı anda etkileşimde bulunabileceğiniz akıcı, glassmorphism tasarımlı bir arayüz sunar. Akıllı otomasyon ve derin entegrasyon ile çalışma seanslarınızı verimli, AI destekli bir deneyime dönüştürür.
 
-### ✨ Temel Özellikler
+---
+
+## ✨ Temel Özellikler
 
 | Özellik | Açıklama |
 |---------|----------|
-| 📄 **PDF Görüntüleyici** | Yakınlaştırma, gezinme, arama ve metin seçimi özellikli tam donanımlı PDF görüntüleyici |
-| 🤖 **Yapay Zeka Entegrasyonu** | ChatGPT ve Google Gemini için yerleşik destek |
-| 👤 **Profil Sistemi** | Şifreli cookie depolama ile çoklu hesap profilleri |
-| 🔐 **Güvenli Depolama** | Hassas veriler için işletim sistemi seviyesinde şifreleme (Windows DPAPI) |
-| ✂️ **Metin Seçimi** | PDF'den metin seçin ve tek tıkla doğrudan yapay zekaya gönderin |
-| 📸 **Ekran Görüntüsü Aracı** | PDF'in herhangi bir alanını yakalayın ve analiz için yapay zekaya gönderin |
-| 🔄 **Otomatik Gönderme Modu** | Seçilen metni otomatik olarak yapay zekaya gönderin |
-| 📐 **Yeniden Boyutlandırılabilir Paneller** | Tercihinize göre panelleri sürükleyerek yeniden boyutlandırın |
-| 💾 **Kalıcı Ayarlar** | Tercihleriniz oturumlar arasında kaydedilir |
-| 🎨 **Modern Arayüz** | Akıcı animasyonlarla cam efekti tasarımı |
-| 🌐 **Çoklu Dil** | Türkçe ve İngilizce desteği |
+| 📄 **Gelişmiş PDF Görüntüleyici** | PDF.js ile yüksek performanslı render, akıcı kaydırma, yakınlaştırma kontrolleri, metin seçimi ve sayfa navigasyonu. |
+| 🤖 **Çoklu AI Ekosistemi** | **ChatGPT, Claude, DeepSeek, Qwen** için yerel destek ve özel AI platformları ekleme imkanı. |
+| ⚡ **AI'ya Gönder** | PDF'lerden metin seçin veya ekran görüntüsü alın ve tek tıklamayla aktif AI'nıza anında gönderin. |
+| 🎨 **Premium Estetik** | Dinamik animasyonlu blob arka planları, bulanıklaştırma efektleri ve akıcı geçişlerle çarpıcı glassmorphism UI. |
+| 📁 **Akıllı Dosya Gezgini** | Sürükle-bırak desteği ve klasör organizasyonu ile entegre PDF kütüphane yönetimi. |
+| 📸 **Ekran Görüntüsü Aracı** | PDF sayfalarının belirli alanlarını yakalayın ve analiz için görsel yetenekli AI'lara doğrudan gönderin. |
+| 🌐 **Çoklu Dil Desteği** | **İngilizce** ve **Türkçe** olarak tamamen yerelleştirilmiş arayüz. |
+| ⚙️ **Derin Özelleştirme** | Görünüm, AI modelleri, CSS seçicileri ve arayüz tercihleri için kapsamlı ayarlar. |
+| 🔄 **Otomatik Güncellemeler** | Sorunsuz güncellemeler için GitHub Releases entegrasyonu ile yerleşik otomatik güncelleyici. |
+| 🔒 **Gizlilik Odaklı** | Tüm AI etkileşimleri gömülü webview'larda gerçekleşir - API anahtarlarınız AI sağlayıcılarında kalır. |
 
 ---
 
-## 🆕 v2.2.0 Sürümündeki Yenilikler
+## 🆕 v3.0.0'daki Yenilikler
 
-### 🔄 Kalıcı Oturum Senkronizasyonu
-- **Otomatik Senkronizasyon Motoru:** Her 5 dakikada oturum cookie'lerini şifreli depolamaya senkronize eder.
-- **Yarış Koşulu Koruması:** Akıllı kilitleme, profil geçişleri veya hızlı değişiklikler sırasında veri kaybını önler.
-- **Güvenli Çıkış:** "Graceful Shutdown" mekanizması, uygulamayı kapatmadan önce son oturum yedeklemesini bekler.
-- **Düzeltme:** Uygulama yeniden başlatıldığında Google oturumlarının süresi dolma veya çıkış yapma sorunu çözüldü.
+### 💎 Premium UI Yenileme
+- **Animasyonlu Arka Planlar:** Organik hareketli yüksek performanslı canvas tabanlı animasyonlu blob'lar
+- **Glassmorphism Tasarım:** Bulanıklaştırma efektleri ve şık kenarlıklarla her bileşen yeniden tasarlandı
+- **Dikey Ayarlar Navigasyonu:** Ayrı sekmelerle (Modeller, Seçiciler, Görünüm, Dil, Hakkında) düzenli ayarlar menüsü
 
-### Platform Tespit Sistemi
-- 🔍 Cookie domain'lerinden otomatik platform tespiti (Gemini/ChatGPT)
-- ⚠️ Yanlış cookie import edildiğinde platform uyumsuzluğu uyarısı
-- 🔀 Karışık cookie tespiti ve raporlama
-- 📋 Bilinmeyen domain'ler için bilgilendirme
+### 🤖 Geliştirilmiş AI Entegrasyonu
+- **Genişletilmiş Platformlar:** Özel AI ekleme ile **ChatGPT, Claude, DeepSeek, Qwen** desteği
+- **Akıllı Otomasyon:** "AI'ya Gönder" işlevselliği için sağlam script enjeksiyon motoru
+- **Oturum Kalıcılığı:** Yeniden başlatmalarda oturumunuzu korumak için güvenilir çerez yönetimi
 
-### Bildirim Sistemi
-- 🔔 Cookie sıfırlama hatalarında toast bildirimi
-- ✅ Profil oluşturma sonuçlarında platform bilgisi
-- 🚫 Tarayıcı alert'leri modern toast'lara dönüştürüldü
-
-### Hata Düzeltmeleri
-- cookies-changed event'ine eksik target alanı eklendi
-- Cookie sıfırlama akışındaki yanıltıcı hata mesajları düzeltildi
-- AiWebview'da varsayılan gemini login state sorunu giderildi
-
----
-
-## 🖼️ Ekran Görüntüleri
-
-<details open>
-<summary>Ekran görüntülerini görmek için tıklayın</summary>
-
-### ChatGPT ile Ana Arayüz
-Uygulama, cam efekti tasarım öğeleriyle temiz ve modern bir bölünmüş ekran arayüzü sunar.
-![Ana Arayüz - ChatGPT](docs/screenshots/main-interface-chatgpt.png)
-
-### Gemini ile Ana Arayüz
-Alt çubuk kontrolleriyle yapay zeka platformları arasında sorunsuz geçiş yapın.
-![Ana Arayüz - Gemini](docs/screenshots/main-interface-gemini.png)
-
-### Temel Arayüz Öğeleri
-- **Dosya Gezgini** - Sürükle-bırak destekli premium cam efekti başlık
-- **PDF Görüntüleyici** - Sayfa gezinme, yakınlaştırma kontrolleri, arama, kayan "AI'ya Gönder" butonu ile metin seçimi
-- **Yapay Zeka Paneli** - Otomatik gönderme ile ChatGPT ve Gemini arasında geçiş
-- **Alt Çubuk** - Yapay zeka platformlarına ve ayarlara hızlı erişim
-- **Ayarlar Modalı** - Profil yönetimi, cookie içe aktarma, dil seçimi
-
-</details>
-
----
-
-## 🚀 Başlarken
-
-### Gereksinimler
-
-- **Node.js** 18.x veya üzeri
-- **npm** 9.x veya üzeri
-- **Git** (depoyu klonlamak için)
-
-### Kurulum
-
-1. **Depoyu klonlayın**
-   ```bash
-   git clone https://github.com/ozymandias-get/Quizlab-Reader.git
-   cd Quizlab-Reader
-   ```
-
-2. **Bağımlılıkları yükleyin**
-   ```bash
-   npm install
-   ```
-
-3. **Geliştirme modunda çalıştırın**
-   ```bash
-   npm run dev
-   ```
-
-4. **Üretim için derleyin** (isteğe bağlı)
-   ```bash
-   npm run build
-   ```
-
-### Hazır Sürümü İndirin
-
-En son yükleyiciyi [Releases](https://github.com/ozymandias-get/Quizlab-Reader/releases) sayfasından indirebilirsiniz.
+### 🛠️ Temel İyileştirmeler
+- **Modüler Mimari:** Backend (Electron) ve frontend (React) arasında temiz ayrım
+- **Performans Optimizasyonu:** Animasyonlar ve webview yaşam döngüsü için azaltılmış CPU kullanımı
+- **Reklam Engelleyici:** Daha temiz AI sohbet deneyimleri için yerleşik reklam engelleme
 
 ---
 
 ## 📁 Proje Yapısı
 
 ```
-Quizlab-Reader/
-├── src/
-│   ├── main/                    # Electron ana süreci
-│   │   ├── index.js             # Ana giriş noktası
-│   │   ├── windowManager.js     # Pencere yaşam döngüsü yönetimi
-│   │   ├── profileManager.js    # Profil CRUD & cookie yönetimi
-│   │   ├── cookieEncryption.js  # İşletim sistemi seviyesi şifreleme (DPAPI)
-│   │   ├── cookieImport.js      # Cookie doğrulama & içe aktarma
-│   │   ├── googleAuth.js        # Google kimlik doğrulama popup'ı
-│   │   ├── pdfProtocol.js       # Özel PDF protokol işleyicisi
-│   │   ├── browserConfig.js     # Tarayıcı/UA yapılandırması
-│   │   ├── ipcHandlers.js       # IPC mesaj işleyicileri
-│   │   └── updater.js           # Otomatik güncelleme işlevi
+quizlab-reader/
+├── backend/                         # Electron Backend
+│   ├── main/                        # Ana İşlem
+│   │   ├── index.js                 # Uygulama girişi ve yaşam döngüsü yönetimi
+│   │   ├── windowManager.js         # Pencere ve webview koordinasyonu
+│   │   ├── ipcHandlers.js           # Main/Renderer IPC iletişimi
+│   │   ├── pdfProtocol.js           # Yerel PDF yükleme için özel protokol
+│   │   ├── adblocker.js             # Gömülü tarayıcılar için reklam engelleme
+│   │   ├── updater.js               # Otomatik güncelleme işlevselliği
+│   │   └── constants.js             # Backend sabitleri
 │   │
-│   ├── preload/                 # Ön yükleme betikleri
-│   │   └── index.js             # Güvenli IPC köprüsü
+│   ├── preload/                     # Güvenli Köprü
+│   │   └── index.js                 # Renderer işlemi için açık API'ler
 │   │
-│   ├── renderer/                # React uygulaması
-│   │   ├── index.html           # HTML giriş noktası
-│   │   └── src/
-│   │       ├── App.jsx          # Ana uygulama bileşeni
-│   │       ├── main.jsx         # React giriş noktası
-│   │       │
-│   │       ├── components/      # React bileşenleri
-│   │       │   ├── AiWebview.jsx        # Yapay zeka platformu webview'ı
-│   │       │   ├── BottomBar.jsx        # Alt kontrol çubuğu
-│   │       │   ├── FloatingButton.jsx   # "AI'ya Gönder" kayan butonu
-│   │       │   ├── ScreenshotTool.jsx   # Ekran görüntüsü yakalama aracı
-│   │       │   ├── SettingsModal.jsx    # Ayarlar modal bileşeni
-│   │       │   ├── CookieImportModal.jsx # Cookie içe aktarma dialogu
-│   │       │   ├── PdfViewer.jsx        # PDF görüntüleyici toplu dışa aktarımı
-│   │       │   │
-│   │       │   ├── pdf/                 # 📄 Modüler PDF Görüntüleyici
-│   │       │   │   ├── index.js               # Toplu dışa aktarım
-│   │       │   │   ├── PdfViewer.jsx          # Ana PDF bileşeni
-│   │       │   │   ├── PdfToolbar.jsx         # Araç çubuğu kontrolleri
-│   │       │   │   ├── PdfSearchBar.jsx       # Arama işlevi
-│   │       │   │   ├── PdfPlaceholder.jsx     # Boş durum
-│   │       │   │   └── hooks/                 # PDF'ye özel hook'lar
-│   │       │   │       ├── index.js
-│   │       │   │       ├── usePdfPlugins.js
-│   │       │   │       ├── usePdfNavigation.js
-│   │       │   │       ├── usePdfScreenshot.js
-│   │       │   │       ├── usePdfTextSelection.js
-│   │       │   │       └── usePdfContextMenu.js
-│   │       │   │
-│   │       │   ├── settings/            # ⚙️ Ayarlar Bileşenleri
-│   │       │   │   ├── index.js               # Toplu dışa aktarım
-│   │       │   │   ├── DataTab.jsx            # Cookie & profil yönetimi
-│   │       │   │   ├── CookieSection.jsx      # Cookie sıfırlama kontrolleri
-│   │       │   │   ├── ProfileSection.jsx     # Çoklu hesap profilleri
-│   │       │   │   ├── LanguageTab.jsx        # Dil seçimi
-│   │       │   │   └── AboutTab.jsx           # Uygulama bilgisi & güncellemeler
-│   │       │   │
-│   │       │   └── FileExplorer/        # 📁 Modüler Dosya Gezgini
-│   │       │       ├── index.jsx              # Ana bileşen
-│   │       │       ├── TreeItem.jsx           # Sürükle-bırak ağaç öğesi
-│   │       │       ├── FileExplorerHeader.jsx # Başlık bileşeni
-│   │       │       ├── FileExplorerFooter.jsx # Altbilgi bileşeni
-│   │       │       ├── EmptyState.jsx         # Boş durum görünümü
-│   │       │       ├── DropOverlay.jsx        # Sürükle-bırak kaplaması
-│   │       │       ├── NewFolderInput.jsx     # Yeni klasör girişi
-│   │       │       ├── DeleteConfirmModal.jsx # Silme onayı
-│   │       │       ├── icons/                 # SVG ikonları
-│   │       │       └── hooks/                 # Gezgin hook'ları
-│   │       │
-│   │       ├── context/         # React context sağlayıcıları
-│   │       │   ├── index.js             # Toplu dışa aktarım
-│   │       │   ├── AppContext.jsx       # Global uygulama durumu
-│   │       │   ├── FileContext.jsx      # Dosya sistemi yönetimi
-│   │       │   ├── ToastContext.jsx     # Toast bildirimleri
-│   │       │   └── LanguageContext.jsx  # i18n desteği
-│   │       │
-│   │       ├── hooks/           # Özel React hook'ları
-│   │       │   ├── index.js             # Toplu dışa aktarım
-│   │       │   ├── useSettings.js       # Ayarlar modal mantığı
-│   │       │   ├── useScreenshot.js     # Ekran görüntüsü işlevi
-│   │       │   ├── useLocalStorage.js   # Kalıcılık
-│   │       │   └── usePanelResize.js    # Panel yeniden boyutlandırma
-│   │       │
-│   │       ├── constants/       # Yapılandırma sabitleri
-│   │       │   ├── aiSites.js           # Yapay zeka platformları yapılandırması
-│   │       │   ├── storageKeys.js       # LocalStorage anahtarları
-│   │       │   └── translations.js      # i18n çevirileri
-│   │       │
-│   │       └── styles/          # CSS stilleri
-│   │           ├── index.css            # Ana CSS girişi
-│   │           └── modules/             # CSS modülleri
+│   └── modules/                     # Backend Modülleri
+│       ├── ai/                      # AI Entegrasyonu
+│       │   ├── aiManager.js         # AI platform orkestrasyonu
+│       │   └── platforms/           # Platforma özel yapılandırmalar
+│       │       ├── chatgpt.js       # ChatGPT seçicileri ve scriptleri
+│       │       ├── claude.js        # Claude seçicileri ve scriptleri
+│       │       ├── deepseek.js      # DeepSeek seçicileri ve scriptleri
+│       │       └── qwen.js          # Qwen seçicileri ve scriptleri
+│       │
+│       └── automation/              # Otomasyon Motoru
+│           ├── automationScripts.js # Metin/görsel enjeksiyon scriptleri
+│           ├── userElementPicker.js # Özel element seçici aracı
+│           └── picker/              # Element seçici yardımcıları
+│
+├── frontend/                        # React Frontend
+│   ├── App.jsx                      # Ana uygulama bileşeni
+│   ├── main.jsx                     # React giriş noktası
+│   ├── index.html                   # HTML şablonu
 │   │
-│   └── test/                    # Test dosyaları
-│       └── ...                  # Birim testleri
+│   ├── components/                  # UI Bileşenleri
+│   │   ├── AiWebview.jsx            # Yönetilen AI tarayıcı webview'ı
+│   │   ├── AppBackground.jsx        # Animasyonlu blob arka planı
+│   │   ├── LeftPanel.jsx            # Sol kenar çubuğu kapsayıcısı
+│   │   ├── ScreenshotTool.jsx       # PDF ekran görüntüsü yakalama
+│   │   ├── SettingsModal.jsx        # Ana ayarlar modal'ı
+│   │   ├── FloatingButton.jsx       # Yüzen eylem düğmesi
+│   │   ├── UpdateBanner.jsx         # Güncelleme bildirim banner'ı
+│   │   ├── UsageAssistant.jsx       # Başlangıç asistanı
+│   │   ├── ErrorBoundary.jsx        # Hata yakalama sarmalayıcısı
+│   │   ├── AestheticLoader.jsx      # Yükleme animasyonları
+│   │   ├── Icons.jsx                # SVG ikon bileşenleri
+│   │   │
+│   │   ├── pdf/                     # PDF Görüntüleyici Bileşenleri
+│   │   │   ├── PdfViewer.jsx        # Ana PDF görüntüleyici
+│   │   │   ├── PdfToolbar.jsx       # PDF araç çubuğu kontrolleri
+│   │   │   ├── PdfSearchBar.jsx     # PDF metin araması
+│   │   │   ├── PdfPlaceholder.jsx   # Boş durum yer tutucusu
+│   │   │   └── hooks/               # PDF'e özel hook'lar
+│   │   │
+│   │   ├── settings/                # Ayar Sekmeleri
+│   │   │   ├── ModelsTab.jsx        # AI modelleri yapılandırması
+│   │   │   ├── SelectorsTab.jsx     # CSS seçici özelleştirmesi
+│   │   │   ├── AppearanceTab.jsx    # Tema ve görsel ayarlar
+│   │   │   ├── LanguageTab.jsx      # Dil seçimi
+│   │   │   ├── AboutTab.jsx         # Uygulama bilgisi ve krediler
+│   │   │   └── ColorPicker.jsx      # Renk seçimi yardımcısı
+│   │   │
+│   │   ├── BottomBar/               # Alt Araç Çubuğu
+│   │   ├── FileExplorer/            # Dosya gezgini kenar çubuğu
+│   │   ├── SplashScreen/            # Uygulama yükleme ekranı
+│   │   ├── Toast/                   # Toast bildirimleri
+│   │   └── tutorial/                # Öğretici bileşenler
+│   │
+│   ├── context/                     # React Context Sağlayıcıları
+│   │   ├── AiContext.jsx            # AI durum yönetimi
+│   │   ├── FileContext.jsx          # Dosya/PDF durum yönetimi
+│   │   ├── AppearanceContext.jsx    # Tema ve görünüm durumu
+│   │   ├── LanguageContext.jsx      # i18n durum yönetimi
+│   │   ├── ToastContext.jsx         # Toast bildirim durumu
+│   │   ├── UpdateContext.jsx        # Otomatik güncelleme durumu
+│   │   ├── NavigationContext.jsx    # Navigasyon durumu
+│   │   └── AppToolContext.jsx       # Uygulama araçları durumu
+│   │
+│   ├── hooks/                       # Özel React Hook'ları
+│   │   ├── useAiSender.js           # AI mesaj gönderme mantığı
+│   │   ├── useElementPicker.js      # Element seçici işlevselliği
+│   │   ├── useLocalStorage.js       # Kalıcı depolama hook'u
+│   │   ├── usePanelResize.js        # Yeniden boyutlandırılabilir panel mantığı
+│   │   ├── useScreenshot.js         # Ekran görüntüsü yakalama hook'u
+│   │   ├── useSettings.js           # Ayarlar yönetimi hook'u
+│   │   └── webview/                 # Webview'a özel hook'lar
+│   │
+│   ├── locales/                     # Çeviriler
+│   │   ├── en.json                  # İngilizce çeviriler
+│   │   └── tr.json                  # Türkçe çeviriler
+│   │
+│   ├── constants/                   # Frontend Sabitleri
+│   │   ├── appConstants.js          # Uygulama geneli sabitler
+│   │   ├── appearance.js            # Görünüm seçenekleri
+│   │   ├── storageKeys.js           # LocalStorage anahtarları
+│   │   └── translations.js          # Çeviri yardımcıları
+│   │
+│   ├── styles/                      # CSS Stilleri
+│   │   └── [14 CSS dosyası]         # Bileşen ve global stiller
+│   │
+│   └── utils/                       # Yardımcı Fonksiyonlar
+│       └── [4 yardımcı dosya]       # Yardımcı fonksiyonlar
 │
-├── docs/                        # Dokümantasyon
-│   └── screenshots/             # Uygulama ekran görüntüleri
+├── resources/                       # Uygulama Kaynakları
+│   └── icon.png                     # Uygulama ikonu
 │
-├── resources/                   # Uygulama kaynakları
-│   ├── icon.ico                 # Windows ikonu
-│   └── icon.png                 # macOS/Linux ikonu
+├── installer/                       # Yükleyici Yapılandırması
+│   └── installer.nsh                # NSIS yükleyici scripti
 │
-└── package.json                 # Proje yapılandırması
+├── docs/                            # Dokümantasyon
+│   └── screenshots/                 # Uygulama ekran görüntüleri
+│
+├── package.json                     # Bağımlılıklar ve scriptler
+├── vite.config.js                   # Vite build yapılandırması
+├── tailwind.config.js               # Tailwind CSS yapılandırması
+├── postcss.config.js                # PostCSS yapılandırması
+└── vitest.config.js                 # Test yapılandırması
 ```
+
+---
+
+## 🚀 Başlarken
+
+### Gereksinimler
+- **Node.js** 18.x veya üstü
+- **npm** 9.x veya üstü
+
+### Geliştirme
+
+1. **Klonlama ve Kurulum**
+   ```bash
+   git clone https://github.com/ozymandias-get/Quizlab-Reader.git
+   cd Quizlab-Reader
+   npm install
+   ```
+
+2. **Geliştirme Sunucusunu Başlatma**
+   ```bash
+   npm run dev
+   ```
+   Bu, hem Vite geliştirme sunucusunu hem de Electron'u geliştirme modunda başlatır.
+
+3. **Yükleyici Oluşturma**
+   ```bash
+   npm run build:win    # Windows (NSIS yükleyici)
+   npm run build:mac    # macOS (DMG)
+   npm run build:linux  # Linux (AppImage, deb)
+   ```
 
 ---
 
 ## 🛠️ Teknoloji Yığını
 
-### Temel Teknolojiler
-
-| Teknoloji | Sürüm | Amaç |
-|-----------|-------|------|
-| **Electron** | 28.0.0 | Masaüstü uygulama çatısı |
-| **React** | 18.2.0 | Kullanıcı arayüzü bileşen kütüphanesi |
-| **Vite** | 5.0.10 | Derleme aracı ve geliştirme sunucusu |
-| **PDF.js** | 3.11.174 | PDF işleme motoru |
-
-### Güvenlik Özellikleri
-
-| Özellik | Teknoloji |
-|---------|-----------|
-| **Cookie Şifreleme** | Electron safeStorage ile Windows DPAPI |
-| **Güvenli IPC** | Ön yükleme köprüsü ile context izolasyonu |
-| **Oturum İzolasyonu** | Profil başına partition sistemi |
-| **Domain İzin Listesi** | Katı gezinme kontrolü |
+| Kategori | Teknolojiler |
+|----------|--------------|
+| **Framework** | Electron 40.0.0 |
+| **Frontend** | React 18.2 ile Vite 5.0 |
+| **Stilleme** | Tailwind CSS, Styled Components, Vanilla CSS |
+| **Animasyonlar** | Framer Motion |
+| **PDF Motoru** | PDF.js 3.11 ile React-PDF-Viewer |
+| **Build Aracı** | Electron Builder 24.13 |
+| **Reklam Engelleme** | @ghostery/adblocker-electron |
 
 ---
 
-## 📖 Kullanım Kılavuzu
+## 🤖 Desteklenen AI Platformları
 
-### Profil Yönetimi
-
-1. **Ayarlar**'ı açın (alt çubuktaki dişli simgesi)
-2. **Veri** sekmesine gidin
-3. Yeni bir profil oluşturmak için **Hesap Ekle**'ye tıklayın
-4. EditThisCookie eklentisini kullanarak tarayıcınızdan cookie'leri içe aktarın
-5. Platform (Gemini/ChatGPT) cookie domain'lerinden otomatik olarak tespit edilir
-
-### Cookie İçe Aktarma (Önerilen Yöntem)
-
-1. [EditThisCookie](https://chromewebstore.google.com/detail/editthiscookie-v3/ojfebgpkimhlhcblbalbfjblapadhbol) eklentisini yükleyin
-2. Chrome'da gemini.google.com veya chatgpt.com'a giriş yapın (tek hesapla Gizli mod kullanın)
-3. EditThisCookie simgesine tıklayın → Export → JSON'u kopyalayın
-4. Quizlab Reader'da: Ayarlar → Veri → Hesap Ekle → JSON'u yapıştırın
-
-### PDF Açma
-
-1. **"PDF Seç"** butonuna tıklayın veya dosya gezginini kullanın
-2. PDF dosyalarını doğrudan uygulamaya sürükleyip bırakın
-3. PDF'ler hızlı erişim için yerel kütüphanenizde saklanır
-
-### Yapay Zekaya Metin Gönderme
-
-1. PDF görüntüleyicide tıklayıp sürükleyerek **metin seçin**
-2. Kayan **"AI'ya Gönder"** butonu görünecektir
-3. Seçili metni mevcut yapay zekaya göndermek için butona tıklayın
-
-### Ekran Görüntüsü Alma
-
-1. PDF araç çubuğundaki **📸 kamera simgesine** tıklayın
-2. Yakalamak istediğiniz alanın etrafına bir dikdörtgen çizin
-3. Ekran görüntüsü analiz için yapay zekaya gönderilecektir
-
-### Yapay Zeka Platformları Arasında Geçiş
-
-1. Kontrol panelini ortaya çıkarmak için alt çubuğun üzerine gelin
-2. Platformlar arasında geçiş yapmak için **ChatGPT** veya **Gemini**'ye tıklayın
-3. Her platform kendi oturumunu ve sohbet geçmişini korur
+| Platform | Özellikler |
+|----------|------------|
+| **ChatGPT** | Metin ve görsel gönderme ile tam destek |
+| **Claude** | Metin ve görsel gönderme ile tam destek |
+| **DeepSeek** | Derin Düşünme, Web Arama, metin ve görsel |
+| **Qwen** | Metin ve görsel gönderme ile tam destek |
+| **Özel** | Özel CSS seçicileri ile herhangi bir AI platformu ekleyin |
 
 ---
 
@@ -308,36 +272,36 @@ Quizlab-Reader/
 | Kısayol | Eylem |
 |---------|-------|
 | `Ctrl + O` | PDF dosyası aç |
-| `Ctrl + F` | PDF'de ara |
+| `Ctrl + F` | PDF'te ara |
 | `Ctrl + +` | Yakınlaştır |
 | `Ctrl + -` | Uzaklaştır |
 | `Ctrl + 0` | Yakınlaştırmayı sıfırla |
-| `Escape` | Ekran görüntüsü modunu iptal et |
+| `Esc` | Modal/katmanları kapat |
 
 ---
 
-## 🔧 Yapılandırma
+## 📝 Kullanılabilir Scriptler
 
-### Desteklenen Yapay Zeka Platformları
-
-Şu anda desteklenen yapay zeka platformları (`src/renderer/src/constants/aiSites.js` dosyasında yapılandırılmış):
-
-| Platform | URL | Cookie Domain'leri |
-|----------|-----|-------------------|
-| ChatGPT | https://chatgpt.com | chatgpt.com, openai.com |
-| Gemini | https://gemini.google.com | google.com, gemini.google.com |
+| Script | Açıklama |
+|--------|----------|
+| `npm run dev` | Hot reload ile geliştirme sunucusunu başlat |
+| `npm run build` | Production bundle'ı oluştur |
+| `npm run build:win` | Windows yükleyicisi oluştur (NSIS) |
+| `npm run build:mac` | macOS yükleyicisi oluştur (DMG) |
+| `npm run build:linux` | Linux paketleri oluştur (AppImage, deb) |
+| `npm run preview` | Production build'i önizle |
 
 ---
 
 ## 🤝 Katkıda Bulunma
 
-Katkılarınızı bekliyoruz! Lütfen bir Pull Request göndermekten çekinmeyin.
+Katkılarınızı bekliyoruz! Pull Request göndermekten çekinmeyin.
 
-1. Depoyu fork'layın
-2. Özellik dalınızı oluşturun (`git checkout -b ozellik/HarikaOzellik`)
-3. Değişikliklerinizi commit'leyin (`git commit -m 'Harika bir özellik eklendi'`)
-4. Dalı push'layın (`git push origin ozellik/HarikaOzellik`)
-5. Bir Pull Request açın
+1. Repository'yi fork edin
+2. Feature branch'inizi oluşturun (`git checkout -b feature/HarikaOzellik`)
+3. Değişikliklerinizi commit edin (`git commit -m 'Harika bir özellik ekle'`)
+4. Branch'e push edin (`git push origin feature/HarikaOzellik`)
+5. Pull Request açın
 
 ---
 
@@ -347,21 +311,15 @@ Bu proje MIT Lisansı altında lisanslanmıştır - detaylar için [LICENSE](LIC
 
 ---
 
-## 🙏 Teşekkürler
+## 💖 Teşekkürler
 
-- [PDF.js](https://mozilla.github.io/pdf.js/) - Mozilla tarafından PDF işleme
 - [Electron](https://www.electronjs.org/) - Çapraz platform masaüstü uygulamaları
-- [React](https://reactjs.org/) - Kullanıcı arayüzü bileşen kütüphanesi
-- [Vite](https://vitejs.dev/) - Yeni nesil derleme aracı
-
----
-
-## 📧 İletişim
-
-**Proje Linki:** [https://github.com/ozymandias-get/Quizlab-Reader](https://github.com/ozymandias-get/Quizlab-Reader)
+- [React](https://react.dev/) - Kullanıcı arayüzü kütüphanesi
+- [PDF.js](https://mozilla.github.io/pdf.js/) - PDF render motoru
+- [Framer Motion](https://www.framer.com/motion/) - Animasyon kütüphanesi
 
 ---
 
 <p align="center">
-  Öğrenciler ve araştırmacılar için ❤️ ile yapıldı
+  ❤️ ile yapıldı, <a href="https://github.com/ozymandias-get">ozymandias-get</a>
 </p>
